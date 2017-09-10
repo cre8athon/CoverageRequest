@@ -1,0 +1,20 @@
+{
+  "name": "mrscoverage",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Coverage facade",
+  "main": "coverage_ws.js",
+  "dependencies": {
+    "express": "^4.15.4",
+    "express-handlebars": "^3.0.0",
+    "handlebars": "^4.0.10",
+    "querystring": "^0.2.0",
+    "request": "^2.81.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "George Nowakowski",
+  "license": "ISC"
+}
