@@ -29,8 +29,6 @@ app.set('port', process.env.PORT || 3000);
 app.use(express.static(__dirname + '/public'));
 
 
-//require('./user').init(app)
-
 // ------------------------------------------------------------------------------------
 
 const user = {  
@@ -43,6 +41,9 @@ function findUser(username, callback) {
 	console.log('in finduser');
 	callback(null, user);
 }
+
+// ------------------------------------------------------------------------------------
+// Passport initialization
 
 passport.use(new LocalStrategy(  
  (username, password, done) => {
@@ -78,9 +79,19 @@ passport.use(new LocalStrategy(
     })
   }
 ))
-// ------------------------------------------------------------------------------------
 
+app.use(require('express-session')({
+    secret: 'keyboard cat',
+    resave: false,
+    saveUninitialized: false
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
+var User = require('./models/user');
+passport.use(new LocalStrategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 function authenticationMiddleware () {  
   return function (req, res, next) {

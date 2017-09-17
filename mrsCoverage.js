@@ -8,47 +8,45 @@ const CAL_ID = 'ksr68d2jhiqwh12ghb';
 const API_KEY = '4887c46d317a218dcd8723c097cd58f2ca195a36c35aa75ede9b1b6a243fddfd'
 const CAL_URL = 'https://api.teamup.com';
 
-
 var request = require('request');
 
-function getFromCal(message) {
-	request.get({
-	     url: CAL_URL + '/' + CAL_ID + '/events?' + querystring.stringify(message),
-	     headers: {
-//	        "Content-Type": "application/json",
-	        "Content-Type": "text/javascript",
-	        "Teamup-Token": API_KEY
-	     },
-	     body: ''
-//	     ,
-//	     json:true
-	}, function(error, response, body){
-	   console.log(error);
-	   console.log(JSON.stringify(response));
-	   console.log(body);
-	});
-}
+module.exports = {
+	getCalendarEvents: function getFromCal(message, callback) {
+		request.get({
+		     url: CAL_URL + '/' + CAL_ID + '/events?' + querystring.stringify(message),
+		     headers: {
+	//	        "Content-Type": "application/json",
+		        "Content-Type": "text/javascript",
+		        "Teamup-Token": API_KEY
+		     },
+		     body: ''
+	//	     ,
+	//	     json:true
+		}, function(error, response, body){
+			callback(error, response, body);
+		});
+	}, 
 
 
-function postToCal(message) {
-	request.post({
-	     url: CAL_URL + '/' + CAL_ID + '/events',
-	     headers: {
-	        "Content-Type": "application/json",
-	        "Teamup-Token": API_KEY
-	     },
-	     body: message
-	     ,
-	     json:true
-	}, function(error, response, body){
-	   console.log('Error: ' + error);
-	   console.log('Response: \n' + JSON.stringify(response));
-	   console.log('Body: ' + JSON.stringify(body));
-	});
-}
+	postRequestToCalendar: function postToCal(message) {
+		request.post({
+		     url: CAL_URL + '/' + CAL_ID + '/events',
+		     headers: {
+		        "Content-Type": "application/json",
+		        "Teamup-Token": API_KEY
+		     },
+		     body: message
+		     ,
+		     json:true
+		}, function(error, response, body){
+		   console.log('Error: ' + error);
+		   console.log('Response: \n' + JSON.stringify(response));
+		   console.log('Body: ' + JSON.stringify(body));
+		});
+	}
+};
 
-
-
+/*
 msg = {
 	startDate: "2017-08-19",
 	endDate: "2017-08-21"
@@ -73,3 +71,4 @@ create_event_msg = {
 
 //postFromCal(msg)
 postToCal(create_event_msg);
+*/
