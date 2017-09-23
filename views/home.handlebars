@@ -1,8 +1,130 @@
+<script>
+
+$( document ).ready(function() {
+	$('#coverageRequestDiv').hide();
+
+	var eventsJSON = $('#allEvents').val();
+	var currentUserName = $('#currentUserName').val();
+	var currentUserId = $('#currentUserId').val();
+
+	var eventsMsg = JSON.parse(unescapeHtml(eventsJSON));
+	for (var i = eventsMsg.events.length - 1; i >= 0; i--) {
+		var event = eventsMsg.events[i];
+		var id = event.id;
+		var requestor = event.who;
+		var buttonId = '#btn_' + id;
+
+		if( requestor == currentUserName ) {
+			$(buttonId).text('Delete');
+			$(buttonId).click(function() {
+				$('#delform_eventId').val(this.id.substring(4))
+				$('form#deleteForm').submit();
+			});
+		} else if( event.isCovering !== undefined && event.isCovering == 'true' ) {
+			$(buttonId).text('Cant cover');
+		} else {
+			$(buttonId).text('Cover');
+			$(buttonId).click(function() {
+				$('#offercover_eventId').val(this.id.substring(4));
+				$('#offercover_userId').val(currentUserId);
+				$('#offercover_userName').val(currentUserName);
+
+				$('form#offerCoverage').submit();
+			});
+		}
+	}
+});
+
+function unescapeHtml(safe) {
+    return safe
+         .replace("&amp;", /&/g)
+         .replace("&lt;", /</g)
+         .replace( "&gt;", />/g)
+         .replace("&quot;", /"/g)
+         .replace("&#039;", /'/g);
+ }
+
+function onCoverageRequest() {
+	$('#coverageRequestButton').attr('disabled','disabled');
+	$('#coverageRequestDiv').show();
+}
+
+function onSubmitCoverageRequest() {
+		
+}
+
+</script>
+
 <div class="page-header">
 <h3>Martinsville Rescue Squad Coverage</h3>
 </div>
-Welcome {{username}}.
+Welcome {{user.displayname}}.
 Current coverage requests: 
 
+<input id="allEvents" type="hidden" value="{{origBody}}" />
+<input id='currentUserName' type="hidden" value="{{user.displayname}}" />
+<input id='currentUserId' type='hidden' value="{{user.id}}" />
+
+<div class="divTable paleBlueRows">
+	<div class="divTableHeading">
+	<div class="divTableRow">
+	<div class="divTableHead">Requestor</div>
+	<div class="divTableHead">Covered By</div>
+	<div class="divTableHead">Role</div>
+	<div class="divTableHead">Start Date</div>
+	<div class="divTableHead">End Date</div>
+	<div class="divTableHead">Action</div>
+	</div>
+	</div>
+
+	{{#each events}}
+	<div class="divTableBody">
+	<div class="divTableRow">
+	<div class="divTableCell">{{this.who}}</div>
+	<div class="divTableCell">{{this.coverage}}</div>
+	<div class="divTableCell">{{this.role}}</div>
+	<div class="divTableCell">{{this.start_dt}}</div>
+	<div class="divTableCell">{{this.end_dt}}</div>
+	<div class="divTableCell"><button id='btn_{{this.id}}' /></div>
+	</div>
+	</div>
+	{{/each}}
+</div>
+
+<form action="/deleteEvent" id='deleteForm' method="post">
+	<input type="hidden" id="delform_eventId" name='eventId' />
+</form>
+
+<form action="/offerCoverage" id="offerCoverage" method="post">
+	<input type="hidden" id="offercover_eventId" name='eventId' />
+	<input type="hidden" id="offercover_userId" name="userId" />
+	<input type="hidden" id="offercover_userName" name='userName' />
+</form>
+
+
 <div>
+<button id='coverageRequestButton' onclick="onCoverageRequest()">New Coverage Request</button>
+</div>
+<form action="/createCoverageRequest" method="post"> 
+<input type='hidden' name='username' value='{{username}}' />
+<input type='hidden' name='displayname' value='{{displayname}}' />
+<input type='hidden' name='id' value='{{id}}' />
+
+	<div id='coverageRequestDiv'>
+		<p>Coverage request</p>
+		<div ><p>Requestor </p><input name='requestor'  id='requestor' value='George Nowakowski' /></div>
+ 		<div ><p>Start Date </p><input name='coverageStartDate'  id='coverageStartDate' value='2017-09-17T18:00:00-04:00' /></div>
+		<div><p>Start Date </p><input id='coverageEndDate' name='coverageEndDate' value='2017-09-18T06:00:00-04:00' /></div>
+		<div>
+			<select id='reqRole' name='role'>
+			  <option value="Assistant">Assistant</option>
+			  <option value="Driver">Driver</option>
+			  <option value="EMT">EMT</option>
+			  <option value="Crew Chief">Crew Chief</option>
+			  <option value="Any">Any</option>
+			</select>
+		</div>
+		<!-- TODO: Pop up a Confirmation dialog box here! -->
+		<button type='submit'>Create request</button>
+
 </div>

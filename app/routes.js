@@ -1,4 +1,7 @@
 // app/routes.js
+const SUB_CALENDAR_ID = 3653990;
+const EVENT_LOCATION = '43';
+
 module.exports = function(app, passport, coverageCalendar) {
 
     // =====================================
@@ -20,39 +23,94 @@ module.exports = function(app, passport, coverageCalendar) {
         res.render('login')
     });
 
+    app.post('/createCoverageRequest', function(req, res) {
+
+        console.log('Cookies: ' + JSON.stringify(req.cookies));
+        create_event_msg = {
+            "subcalendar_id": SUB_CALENDAR_ID,
+            "start_dt": req.body.coverageStartDate,
+            "end_dt": req.body.coverageEndDate,
+            "all_day": false,
+            "rrule": "",
+            "title": "Coverage Request",
+            "who": req.body.requestor,
+            "location": EVENT_LOCATION
+        };
+
+        var extra_meta = {}
+        extra_meta['role'] = req.body.role;
+
+        //console.log('-------- extra_meta: ' + JSON.stringify(extra_meta));
+
+        coverageCalendar.postRequestToCalendar(create_event_msg, extra_meta);
+        // console.log('************************************************');
+        // console.log(JSON.stringify(create_event_msg));
+
+        // res.username = req.body.username;
+        // res.id = req.body.id;
+        res.redirect('/home');
+    });
+
+    app.post('/deleteEvent', function(req, res) {
+        if( !req.isAuthenticated() ) {
+            res.redirect('login');
+        }
+
+        coverageCalendar.getEvent(req.body.eventId, function(error, eventId, body) {
+            console.log('\n\n------------------ Got event ----------------------');
+            console.log(body);
+            console.log('------------------ Got event ----------------------\n\n');
+
+            coverageCalendar.deleteEvent(eventId, body, function(error) {
+                res.redirect('/home');
+            });
+        });
+    });
+
     app.get('/home', function(req, res) {
-        console.log('in /home get handler')
+
+        console.log('in /home get handler: ');
+//        console.log('Here are the cooks: ' + JSON.stringify(req.cookies));
         if( req.isAuthenticated() ) {
-            // console.log('User is logged in.  Going to render home');
-            // console.log('User: ' + JSON.stringify(req.user));
-            // console.log('Cookies: ' + JSON.stringify(req.cookies));
-            // console.log('Signed Cookies: ' + JSON.stringify(req.signedCookies))
+
             date_range = {
                 startDate: "2017-08-19",
-                endDate: "2017-08-21"
+                endDate: "2017-10-01"
 
             };
 
-            coverageCalendar.getCalendarEvents(date_range, function(error, response, body){
+            coverageCalendar.getCalendarEvents(date_range, function(error, response, body, calendarEvents){
+                console.log('Got calendar events: ' + JSON.stringify(calendarEvents));
                 if( error ) {
                     console.log('Error received while querying for range: ' + 
                         date_range.startDate + " - " + date_range.endDate);
                 } else {
-                    var parsedBody = JSON.parse(body);
-                    console.log('Parsed body: ' + JSON.stringify(parsedBody));
-                    res.render('home', 
-                        {
-                            username: req.user.username,
-                            events: parsedBody.events
+                    res.render('home', {
+                        user: req.cookies.mrs_user,
+                        events: calendarEvents.events,
+                        origBody: body
                         }
                     );
                 }
             });
-//            res.render('home', {username: req.user.username})
         } else {
-//            console.log('User is not logged in!!!!, redirecting to login');
             res.redirect('login');
         }
+    });
+
+    app.post('/offerCoverage', function(req, res) {
+        
+        coverageCalendar.addCoverage(req.body.eventId, {id: req.body.userId, name: req.body.userName}, 
+            function(error, response, body) {
+                res.redirect('home');
+            });
+    });
+
+    app.post('removeCoverage', function(req, res) {
+        coverageCalendar.removeCoverage(req.body.eventId, {id: req.body.userId, name: req.body.userName}, 
+            function(error, response, body) {
+                res.redirect('home');
+            });
     });
 
     app.post('/home', function(req, res) {
@@ -67,10 +125,13 @@ module.exports = function(app, passport, coverageCalendar) {
 
     function callAuth(req, res, next) {
         var ret = passport.authenticate('local');
-        var x = ret(req, res, next);
+        ret(req, res, next);
     }
 
     app.post('/login', callAuth, function(req, res) {
+
+        console.log('Here is the user: ' + JSON.stringify(req.user));
+        res.cookie('mrs_user', req.user);
         res.redirect('/home');
     }); 
 
