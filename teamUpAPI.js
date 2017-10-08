@@ -19,7 +19,7 @@ const CAL_URL = 'https://api.teamup.com';
 
 var request = require('request');
 
-function getFromCal(message, callback) {
+function getFromCal(message, user, callback) {
 	request.get({
 	     url: CAL_URL + '/' + CAL_ID + '/events?' + querystring.stringify(message),
 	     headers: {
@@ -30,14 +30,16 @@ function getFromCal(message, callback) {
 	     body: ''
 //	     ,
 //	     json:true
-	}, function(error, response, body){
+	}, function(error, response, body) {
 		console.log('>>getFromCal');
 		console.log('ERROR: ' + error);
 		// console.log('RESPONSE: ' + response);
-		// console.log('BODY: ' + body);
+		console.log('BODY: ' + body);
 		var responseJSON = JSON.parse(body);
 
-		for (var i = responseJSON.events.length - 1; i >= 0; i--) {
+		var coveringEventIds = [];
+		for (var i = 0; i < responseJSON.events.length; i++) {
+
 			var event = responseJSON.events[i];
 			if (event.notes !== undefined) {
 				var notesJSON = JSON.parse(event.notes.replace(/\'/g, '"')); 
@@ -45,12 +47,11 @@ function getFromCal(message, callback) {
 
 				var pplCovering = '';
 				if( notesJSON.coverage !== undefined ) {
-					for (var i = notesJSON.coverage.length - 1; i >= 0; i--) {
-						var coverer = notesJSON.coverage[i];
+					for (var j = notesJSON.coverage.length - 1; j >= 0; j--) {
+						var coverer = notesJSON.coverage[j];
 						pplCovering = pplCovering + coverer.name;
-						console.log('((((((((((()))))))))))) is coverer.name == event.who ? ' + coverer.name + " == " + event.who + (coverer.name == event.who));
-						if( coverer.name == event.who ) {
-							event.isCovering = 'true';
+						if( coverer.id == user.id ) {
+							coveringEventIds.push(event.id);
 						}
 					}
 				}
@@ -58,21 +59,15 @@ function getFromCal(message, callback) {
 				if( pplCovering !== undefined && pplCovering.length > 0 ) {
 					event.coverage = pplCovering;
 				}
-
-
-				// var noteValues = JSON.parse(event.notes.replace(/\'/g, '"')); 
-				// var keys = Object.keys(noteValues);
-				// for(var j=0;j<keys.length;j++){
-				//     var key = keys[j];
-				//     event[key] = noteValues[key];
-				// }
 			}
-		};
-		callback(error, response, body, responseJSON);
+		}
+
+		callback(error, response, body, coveringEventIds, responseJSON);
 	});
 }
 
 function getEvent(eventId, callback) {
+	console.log('>> Getting event with id: ' + eventId);
 	request.get({
 	     url: CAL_URL + '/' + CAL_ID + '/events/' + eventId,
 	     headers: {
@@ -82,6 +77,9 @@ function getEvent(eventId, callback) {
 	     },
 	     body: ''
 	}, function(error, response, body){
+		console.log('#ERROR: ' + error);
+		console.log('#Response: ' + JSON.stringify(response));
+		console.log('#Body: ' + JSON.stringify(body));
 		console.log('Received event: ' + body);
 		callback(error, eventId, body);
 	});		
@@ -107,24 +105,72 @@ function deleteEvent(requestId, event, callback) {
 
 }
 
-function postToCal(message, extra_meta) {
-
-	message['notes'] = JSON.stringify(extra_meta);		
-	console.log('Posting to Cal: \n' + JSON.stringify(message, null, 4));
+function postToCal(message, callback) {
 	request.post({
 	     url: CAL_URL + '/' + CAL_ID + '/events',
 	     headers: {
 	        "Content-Type": "application/json",
 	        "Teamup-Token": API_KEY
 	     },
-	     body: message
-	     ,
+	     body: message,
 	     json:true
 	}, function(error, response, body){
-	   console.log('Error: ' + error);
-	   console.log('Response: \n' + JSON.stringify(response));
-	   console.log('Body: ' + JSON.stringify(body));
+		console.log('<< postToCal');
+	    console.log('Error: ' + error);
+	    console.log('Response: \n' + JSON.stringify(response));
+	    console.log('Body: ' + JSON.stringify(body));
+	    callback(error, response, body);
 	});
+}
+
+function createCoverageRequest(
+	startDateTimeString, 
+	endDateTimeString, 
+	coverageType, 
+	mrs_user, 
+	calendarId, 
+	event_location, 
+	callback) {
+
+	var create_event_msg = generateCreateEventMessage(startDateTimeString, endDateTimeString, 
+	coverageType, 
+	mrs_user, 
+	calendarId, 
+	event_location);
+
+    postToCal(create_event_msg,  
+    	function(error, response, body) {
+    		callback(error, response, body);
+    	} 
+    );
+}
+
+function generateCreateEventMessage(startDateTimeString, endDateTimeString, 
+	coverageType, 
+	mrs_user, 
+	calendarId, 
+	event_location) {
+
+    create_event_msg = {
+        "subcalendar_id": calendarId,
+        "start_dt": startDateTimeString,
+        "end_dt": endDateTimeString,
+        "all_day": false,
+        "rrule": "",
+        "title": "Coverage Request",
+        "who": mrs_user.displayname,
+        "location": event_location
+    };
+
+    create_event_msg.notes = JSON.stringify({
+    	role: coverageType,
+    	requestor: {
+    		id: mrs_user.id,
+    		username: mrs_user.username
+    	}
+    });
+
+    return create_event_msg;
 }
 
 /**
@@ -136,6 +182,7 @@ function postToCal(message, extra_meta) {
 function addCoverage(event_id, coveredBy, callback) {
 	//TODO: If only covering part - split into 2 events, also, unsplit back!
 	getEvent(event_id, function(error, eventId, body) {
+		console.log('<< got event with id: ' + event_id);
 		var eventJSON = JSON.parse(body);
 		var modifiedNotes = addCoverageToNotes(coveredBy, eventJSON.event.notes);
 		eventJSON.event.notes = modifiedNotes;
@@ -151,7 +198,7 @@ function addCoverage(event_id, coveredBy, callback) {
 function removeCoverage(event_id, coveredBy, callback) {
 	getEvent(event_id, function(error, eventId, body) {
 		var eventJSON = JSON.parse(body);
-		var modifiedNotes = removeCoverageFromNotes(coveredBy, msgJSON.event.notes);		
+		var modifiedNotes = removeCoverageFromNotes(coveredBy, eventJSON.event.notes);		
 		eventJSON.event.notes = modifiedNotes;
 		updateEvent(event_id, eventJSON.event, callback);
 	});
@@ -239,16 +286,6 @@ function removeCoverageFromNotes(coveredBy, notes) {
 	}
 }
 
-
-var input_notes = JSON.stringify({
-	role: 'EMT',
-	coverage: [
-		'George',
-		'Scott'
-	]
-});
-
-
 // ====================================================================================================
 // ====================================================================================================
 // EXPORTS
@@ -258,11 +295,12 @@ module.exports = {
 	getCalendarEvents: getFromCal,
 	getEvent: getEvent,
 	deleteEvent: deleteEvent,
-	postRequestToCalendar: postToCal,
+	createCoverageRequest: createCoverageRequest,
 	addCoverage: addCoverage,
 	removeCoverage: removeCoverage,
 	_updateEvent: updateEvent,
 	_addCoverageToNotes: addCoverageToNotes,
-	_removeCoverageFromNotes: removeCoverageFromNotes
+	_removeCoverageFromNotes: removeCoverageFromNotes,
+	_generateCreateEventMessage: generateCreateEventMessage
 }
 

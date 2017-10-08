@@ -6,8 +6,10 @@
   "main": "coverage_ws.js",
   "dependencies": {
     "body-parser": "^1.18.0",
+    "chai-json-equal": "0.0.1",
     "connect-flash": "^0.1.1",
     "cookie-parser": "^1.4.3",
+    "dateformat": "^3.0.2",
     "express": "^4.15.4",
     "express-handlebars": "^3.0.0",
     "express-session": "^1.15.5",

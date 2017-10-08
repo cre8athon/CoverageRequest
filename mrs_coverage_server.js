@@ -56,18 +56,18 @@ app.use(require('express-session')({
 }));
 
 function findUser(user_name, callback) {
-	console.log('in finduser');
+//	console.log('in finduser');
 	callback(null, usersWithPasswords[user_name]);
 }
 
 passport.serializeUser(function(user, done) {
-    console.log('>>serializeUser called with user.id: ' + user.id);
+//    console.log('>>serializeUser called with user.id: ' + user.id);
     usersById[user.id] = user;
     done(null, user.id);
 });
 
 passport.deserializeUser(function(id, done) {
-	console.log('>> deserializeUser called. Returning: ' + usersById[id]);
+//	console.log('>> deserializeUser called. Returning: ' + usersById[id]);
     done(null, usersById[id]);
 });
 

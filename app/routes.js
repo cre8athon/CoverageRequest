@@ -2,7 +2,15 @@
 const SUB_CALENDAR_ID = 3653990;
 const EVENT_LOCATION = '43';
 
+const utils = require('../utils');
+const dateFormat = require('dateformat');
+const path = require('path');
+const express = require('express');
+
 module.exports = function(app, passport, coverageCalendar) {
+
+
+    app.use(express.static(path.resolve('./public')));
 
     // =====================================
     // HOME PAGE (with login links) ========
@@ -23,32 +31,32 @@ module.exports = function(app, passport, coverageCalendar) {
         res.render('login')
     });
 
+    // ===========================================================
+    // Catch all - block any requests unless authenticated!
+    // ===========================================================
+    // app.all('*', function(req, res, next) {
+    //     if( !req.isAuthenticated() ) {
+    //         res.redirect('login');
+    //     }
+    //     next();
+    // });
+
     app.post('/createCoverageRequest', function(req, res) {
 
-        console.log('Cookies: ' + JSON.stringify(req.cookies));
-        create_event_msg = {
-            "subcalendar_id": SUB_CALENDAR_ID,
-            "start_dt": req.body.coverageStartDate,
-            "end_dt": req.body.coverageEndDate,
-            "all_day": false,
-            "rrule": "",
-            "title": "Coverage Request",
-            "who": req.body.requestor,
-            "location": EVENT_LOCATION
-        };
+        var startDateTimeString = utils.dateTimeToISO(req.body.coverageStartDate, req.body.coverageStartTime);
+        var endDateTimeString = utils.dateTimeToISO(req.body.coverageEndDate, req.body.coverageEndTime);
 
-        var extra_meta = {}
-        extra_meta['role'] = req.body.role;
-
-        //console.log('-------- extra_meta: ' + JSON.stringify(extra_meta));
-
-        coverageCalendar.postRequestToCalendar(create_event_msg, extra_meta);
-        // console.log('************************************************');
-        // console.log(JSON.stringify(create_event_msg));
-
-        // res.username = req.body.username;
-        // res.id = req.body.id;
-        res.redirect('/home');
+        coverageCalendar.createCoverageRequest(
+            startDateTimeString, 
+            endDateTimeString, 
+            req.body.coverageType,
+            req.cookies.mrs_user, 
+            SUB_CALENDAR_ID, 
+            EVENT_LOCATION,
+            function(error, response, body) {
+                 res.redirect('/home');
+            }
+        );
     });
 
     app.post('/deleteEvent', function(req, res) {
@@ -60,6 +68,14 @@ module.exports = function(app, passport, coverageCalendar) {
             console.log('\n\n------------------ Got event ----------------------');
             console.log(body);
             console.log('------------------ Got event ----------------------\n\n');
+
+            var notes = JSON.parse(JSON.parse(body).event.notes);
+
+            if( notes.requestor.id != req.cookies.mrs_user.id ) {
+                console.log('Attempt to delete event created by: ' + notes.requestor.id + ' By user with id: ' + 
+                    req.cookies.mrs_user.id + ' ** Aborting **');
+                res.redirect('/home');               
+            }
 
             coverageCalendar.deleteEvent(eventId, body, function(error) {
                 res.redirect('/home');
@@ -73,14 +89,16 @@ module.exports = function(app, passport, coverageCalendar) {
 //        console.log('Here are the cooks: ' + JSON.stringify(req.cookies));
         if( req.isAuthenticated() ) {
 
-            date_range = {
-                startDate: "2017-08-19",
-                endDate: "2017-10-01"
+            var now = new Date();
 
+            date_range = {
+                startDate: dateFormat(now, 'yyyy-mm-dd'),
+                endDate: dateFormat(utils.addYearToDate(now), 'yyyy-mm-dd')
             };
 
-            coverageCalendar.getCalendarEvents(date_range, function(error, response, body, calendarEvents){
-                console.log('Got calendar events: ' + JSON.stringify(calendarEvents));
+            console.log('>>>>>> Date range: ' + JSON.stringify(date_range));
+
+            coverageCalendar.getCalendarEvents(date_range, req.cookies.mrs_user, function(error, response, body, coveringEventIds, calendarEvents){
                 if( error ) {
                     console.log('Error received while querying for range: ' + 
                         date_range.startDate + " - " + date_range.endDate);
@@ -88,7 +106,9 @@ module.exports = function(app, passport, coverageCalendar) {
                     res.render('home', {
                         user: req.cookies.mrs_user,
                         events: calendarEvents.events,
-                        origBody: body
+                        coveringEventIds: coveringEventIds,
+                        eventText: JSON.stringify(calendarEvents.events)
+//                        origBody: body
                         }
                     );
                 }
@@ -98,15 +118,23 @@ module.exports = function(app, passport, coverageCalendar) {
         }
     });
 
+    app.get('/requestcoverage', function(req, res) {
+        if( req.isAuthenticated() ) {
+            res.render('requestcoverage', {username: req.cookies.mrs_user.displayname});
+        } else {
+           res.redirect('login');
+        }
+    });
+
     app.post('/offerCoverage', function(req, res) {
-        
+        console.log(">> offerCoverage: " + JSON.stringify({id: req.body.userId, name: req.body.userName}, null, 4));
         coverageCalendar.addCoverage(req.body.eventId, {id: req.body.userId, name: req.body.userName}, 
             function(error, response, body) {
                 res.redirect('home');
             });
     });
 
-    app.post('removeCoverage', function(req, res) {
+    app.post('/removeCoverage', function(req, res) {
         coverageCalendar.removeCoverage(req.body.eventId, {id: req.body.userId, name: req.body.userName}, 
             function(error, response, body) {
                 res.redirect('home');

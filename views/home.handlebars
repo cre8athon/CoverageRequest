@@ -1,29 +1,90 @@
 <script>
 
 $( document ).ready(function() {
-	$('#coverageRequestDiv').hide();
 
-	var eventsJSON = $('#allEvents').val();
+	events = [
+				{
+					title: 'Click for Google',
+					url: 'http://google.com/',
+					start: '2017-09-01',
+					color: 'red'
+				}
+            ];
+
+	$('#calendar').fullCalendar({
+        // put your options and callbacks here
+
+           header: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'month,agendaWeek,agendaDay'
+            },
+            events: [
+            	{{#each events}}
+            	{
+            		title: '{{this.who}}',
+	            	start: '{{this.start_dt}}',
+	            	end: '{{this.end_dt}}'
+            	},
+            	{{/each}}
+            ]
+
+
+    });
+
+	var event2 = {
+					title: 'Click for Boogle',
+					url: 'http://google.com/',
+					start: '2017-09-02',
+					color: 'red'
+
+	};
+
+	$('#calendar').fullCalendar( 'renderEvent', event2, true);
+	$('#calendar_section').hide();
+
+	var eventsJSON = $('#events').val();
 	var currentUserName = $('#currentUserName').val();
 	var currentUserId = $('#currentUserId').val();
 
 	var eventsMsg = JSON.parse(unescapeHtml(eventsJSON));
-	for (var i = eventsMsg.events.length - 1; i >= 0; i--) {
-		var event = eventsMsg.events[i];
+	for (var i = eventsMsg.length - 1; i >= 0; i--) {
+		var event = eventsMsg[i];
+
 		var id = event.id;
 		var requestor = event.who;
 		var buttonId = '#btn_' + id;
+		var coveringEventIds = splitValues($('#coveringEventIds').val());
+		// console.log(JSON.stringify(event, null, 4));
+		// console.log('eventId: ' + event.id + ' covered by: ' + event.coverage);
+		if( event.coverage === undefined ) {
+			$('#status_' + id).text("Not covered");
+			$('#status_' + id).addClass('label-not-covered');
+		} else {
+			$('#status_' + id).text("Covered");			
+			$('#status_' + id).addClass('label-covered');
+		}
 
 		if( requestor == currentUserName ) {
-			$(buttonId).text('Delete');
+			$(buttonId).text('Delete request');
 			$(buttonId).click(function() {
 				$('#delform_eventId').val(this.id.substring(4))
 				$('form#deleteForm').submit();
 			});
-		} else if( event.isCovering !== undefined && event.isCovering == 'true' ) {
-			$(buttonId).text('Cant cover');
+		} else if( $.inArray(id, coveringEventIds) >= 0 ) {
+			$('#status_' + id).text("I am covering");
+			$(buttonId).text('I can no longer cover');
+
+			$(buttonId).click(function() {
+				$('#removecover_eventId').val(this.id.substring(4));
+				$('#removecover_userId').val(currentUserId);
+				$('#removecover_userName').val(currentUserName);
+
+				$('form#removeCoverage').submit();
+			});
+
 		} else {
-			$(buttonId).text('Cover');
+			$(buttonId).text('I will Cover');
 			$(buttonId).click(function() {
 				$('#offercover_eventId').val(this.id.substring(4));
 				$('#offercover_userId').val(currentUserId);
@@ -35,6 +96,14 @@ $( document ).ready(function() {
 	}
 });
 
+function splitValues(val) {
+	if( val === undefined || val.length == 0 ) {
+		return [];
+	} else {
+		return val.split(',');
+	}
+}
+
 function unescapeHtml(safe) {
     return safe
          .replace("&amp;", /&/g)
@@ -44,13 +113,9 @@ function unescapeHtml(safe) {
          .replace("&#039;", /'/g);
  }
 
-function onCoverageRequest() {
-	$('#coverageRequestButton').attr('disabled','disabled');
-	$('#coverageRequestDiv').show();
-}
-
-function onSubmitCoverageRequest() {
-		
+function toggleCalendar() {
+	$('#no_calendar').toggle();
+	$('#calendar_section').toggle();
 }
 
 </script>
@@ -64,11 +129,23 @@ Current coverage requests:
 <input id="allEvents" type="hidden" value="{{origBody}}" />
 <input id='currentUserName' type="hidden" value="{{user.displayname}}" />
 <input id='currentUserId' type='hidden' value="{{user.id}}" />
+<input id='coveringEventIds' type='hidden' value="{{coveringEventIds}}" />
+<input id='events' type="hidden" value='{{eventText}}' />
 
+<div id="no_calendar">
+	<button onClick="toggleCalendar();">Show Calendar</button>
+</div>
+<div id='calendar_section' style="padding:40px;border:1px;">
+	<button onClick="toggleCalendar();">Hide Calendar</button>
+	<div id='calendar'></div>
+</div>
+</div>
+ 
 <div class="divTable paleBlueRows">
 	<div class="divTableHeading">
 	<div class="divTableRow">
 	<div class="divTableHead">Requestor</div>
+	<div class="divTableHead">Request Status</div>
 	<div class="divTableHead">Covered By</div>
 	<div class="divTableHead">Role</div>
 	<div class="divTableHead">Start Date</div>
@@ -81,6 +158,7 @@ Current coverage requests:
 	<div class="divTableBody">
 	<div class="divTableRow">
 	<div class="divTableCell">{{this.who}}</div>
+	<div class="divTableCell"><label id='status_{{this.id}}'/></div>
 	<div class="divTableCell">{{this.coverage}}</div>
 	<div class="divTableCell">{{this.role}}</div>
 	<div class="divTableCell">{{this.start_dt}}</div>
@@ -101,30 +179,23 @@ Current coverage requests:
 	<input type="hidden" id="offercover_userName" name='userName' />
 </form>
 
+<form action="/removeCoverage" id="removeCoverage" method="post">
+	<input type="hidden" id="removecover_eventId" name='eventId' />
+	<input type="hidden" id="removecover_userId" name="userId" />
+	<input type="hidden" id="removecover_userName" name='userName' />
+</form>
 
-<div>
-<button id='coverageRequestButton' onclick="onCoverageRequest()">New Coverage Request</button>
-</div>
-<form action="/createCoverageRequest" method="post"> 
-<input type='hidden' name='username' value='{{username}}' />
-<input type='hidden' name='displayname' value='{{displayname}}' />
-<input type='hidden' name='id' value='{{id}}' />
 
-	<div id='coverageRequestDiv'>
-		<p>Coverage request</p>
-		<div ><p>Requestor </p><input name='requestor'  id='requestor' value='George Nowakowski' /></div>
- 		<div ><p>Start Date </p><input name='coverageStartDate'  id='coverageStartDate' value='2017-09-17T18:00:00-04:00' /></div>
-		<div><p>Start Date </p><input id='coverageEndDate' name='coverageEndDate' value='2017-09-18T06:00:00-04:00' /></div>
-		<div>
-			<select id='reqRole' name='role'>
-			  <option value="Assistant">Assistant</option>
-			  <option value="Driver">Driver</option>
-			  <option value="EMT">EMT</option>
-			  <option value="Crew Chief">Crew Chief</option>
-			  <option value="Any">Any</option>
-			</select>
-		</div>
-		<!-- TODO: Pop up a Confirmation dialog box here! -->
-		<button type='submit'>Create request</button>
 
-</div>
+
+<form action="/requestcoverage" method="get">
+	<button class='pure-button pure-button-primary' type="submit">Create Coverage Request</button>
+</form>
+
+
+
+<link href='/fullcalendar-3.5.1/fullcalendar.min.css' rel='stylesheet' />
+<link href='/fullcalendar-3.5.1/fullcalendar.print.min.css' rel='stylesheet' media='print' />
+<script src='/fullcalendar-3.5.1/lib/moment.min.js'></script>
+<script src='/fullcalendar-3.5.1/lib/jquery.min.js'></script>
+<script src='/fullcalendar-3.5.1/fullcalendar.min.js'></script>

@@ -1,0 +1,62 @@
+<script>
+
+	var DATE_FORMAT = 'DD MM dd, yy';
+
+	$( document ).ready(function() {
+		$('#coverageStartDate').datepicker({defaultDate: new Date(), dateFormat: DATE_FORMAT});
+		$('#coverageEndDate').datepicker({defaultDate: new Date(), dateFormat: DATE_FORMAT});
+	});
+
+	function setAMTime() {
+		$('#coverageStartTime').val('0600');
+		$('#coverageEndTime').val('1800');
+		$('#coverageEndDate').val($('#coverageStartDate').val());
+	}
+	function setPMTime() {
+		$('#coverageStartTime').val('1800');
+		$('#coverageEndTime').val('0600');
+		var day = 60 * 60 * 24 * 1000;
+		var startDate = new Date($('#coverageStartDate').val());
+		var endDate = new Date(startDate.getTime() + day);
+
+		$('#coverageEndDate').val($.datepicker.formatDate(DATE_FORMAT, endDate));
+	}
+</script>
+
+<h1>Martinsville Rescue Squad</h1>
+<form action="/createCoverageRequest" method="post" class="pure-form pure-form-aligned">
+	<fieldset>
+        <legend>Coverage Request</legend>
+
+        <div class="pure-control-group">
+        	<label>Requestor</label>
+        	<label>{{username}}
+        </div>
+        <div class="pure-control-group">
+	        <label for="requestStart">Coverage Start</label>
+        	<input name='coverageStartDate' style="width:300px;" id='coverageStartDate' />
+        	<input name='coverageStartTime' id='coverageStartTime'/>
+        	<button type='button' onClick='setAMTime();'>AM Shift</button>
+        	<button type='button' onClick='setPMTime();'>PM Shift</button>
+	    </div>
+	    <div class="pure-control-group">
+	        <label for="coverageEndDate">Coverage End</label>
+        	<input name='coverageEndDate' style="width:300px;" id='coverageEndDate' />
+        	<input name='coverageEndTime' id='coverageEndTime'/>
+	    </div>
+		<div class="pure-control-group">	    
+	        <label for="coverageType">Coverage Type</label>
+			<select id='coverageType' name='coverageType'>
+			  <option value="Assistant">Assistant</option>
+			  <option value="Driver">Driver</option>
+			  <option value="EMT">EMT</option>
+			  <option value="Crew Chief">Crew Chief</option>
+			  <option value="Any">Any</option>
+			</select>
+	    </div>
+
+		<div class="pure-control-group">	    
+	        <button type="submit" class="pure-button pure-button-primary">Create Request</button>
+	    </div>
+    </fieldset>
+</form>
