@@ -1,12 +1,17 @@
 var express = require('express');
 var passport = require('passport');
 var session = require('express-session');
+//var flash = require('express-flash');
+var flash = require('connect-flash');
 
 
 const coverageCalendar = require('./teamUpAPI.js');
+const userManager = require('./fileUserManager.js');
+userManager.setUserFileName('/tmp/mrscoverageUsers.json');
 
 var app = express();
-//require('./app/routes.js')(app, passport, coverageCalendar); // load our routes and pass in our app and fully configured passport
+
+var userCache = {};
 
 // ========== Standard stuff from Banas tutorial
 app.disable('x-powered-by');
@@ -21,29 +26,8 @@ app.set('view engine', 'handlebars');
 app.use(require('body-parser').urlencoded({extended: true}));
 var credentials = require('./credentials.js');
 app.use(require('cookie-parser')(credentials.cookieSecret));
-var flash=require("connect-flash");
+//var flash=require("connect-flash");
 // Cache of users:
-usersById = {}
-
-usersWithPasswords = {}
-
-// todo: Replace this with something that loads users/passwords
-usersWithPasswords['georgen'] = {
-    username: 'georgen',
-    displayname: 'George Nowakowski',
-    role: 'Crew Chief',
-    password: 'ccaassee',
-    id: 1
-};
-
-usersWithPasswords['marksz'] = {
-    username: 'marksz',
-    displayname: 'Mark Swartz',
-    role: 'Crew Chief',
-    password: 'goodPwd',
-    id: 2    
-}
-
 // Configure Passport
 // ------------------------------------------------------------------------------------
 // Passport initialization
@@ -56,24 +40,21 @@ app.use(require('express-session')({
 }));
 
 function findUser(user_name, callback) {
-//	console.log('in finduser');
-	callback(null, usersWithPasswords[user_name]);
+	callback(null, userManager.getUserById(user_name));
 }
 
 passport.serializeUser(function(user, done) {
-//    console.log('>>serializeUser called with user.id: ' + user.id);
-    usersById[user.id] = user;
-    done(null, user.id);
+    userCache[user.email] = user;
+    done(null, user.email);
 });
 
-passport.deserializeUser(function(id, done) {
-//	console.log('>> deserializeUser called. Returning: ' + usersById[id]);
-    done(null, usersById[id]);
+passport.deserializeUser(function(username, done) {
+    done(null, userCache[username]);
 });
 
 passport.use('local', new LocalStrategy(
- (username, password, done) => {
-    findUser(username, (err, user) => {
+ (email, password, done) => {
+    findUser(email, (err, user) => {
         console.log('<< findUser err: ' + err + ' User: ' + user);
       if (err) {
         return done(err)
@@ -100,7 +81,7 @@ passport.use('local', new LocalStrategy(
         return done(null, user);
       } else {
         console.log('Invalid password');
-        return done("Invalid password!!")
+        return done(null, false);
       }
 
       // if (password == 'ccaassee') {
@@ -112,20 +93,22 @@ passport.use('local', new LocalStrategy(
 
     })
   }
-));
+))
 
 
 // ========== Standard stuff from Banas tutorial
 app.use(passport.initialize());
 app.use(passport.session()); // persistent login sessions
-//app.use(flash());
+app.use(flash());
 
 // routes ======================================================================
-require('./app/routes.js')(app, passport, coverageCalendar); // load our routes and pass in our app and fully configured passport
+require('./app/routes.js')(app, passport, coverageCalendar, userManager); // load our routes and pass in our app and fully configured passport
 
 app.set('port', process.env.PORT || 3000);
 
-app.listen(app.get('port'), function(){
+var server = app.listen(app.get('port'), function(){
   console.log('Express started on http://localhost:' + app.get('port') + ' press Ctrl-C to terminado');
 });
+
+module.exports = server;
 

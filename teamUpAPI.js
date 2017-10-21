@@ -37,33 +37,40 @@ function getFromCal(message, user, callback) {
 		console.log('BODY: ' + body);
 		var responseJSON = JSON.parse(body);
 
-		var coveringEventIds = [];
-		for (var i = 0; i < responseJSON.events.length; i++) {
-
-			var event = responseJSON.events[i];
-			if (event.notes !== undefined) {
-				var notesJSON = JSON.parse(event.notes.replace(/\'/g, '"')); 
-				event.role = notesJSON.role;
-
-				var pplCovering = '';
-				if( notesJSON.coverage !== undefined ) {
-					for (var j = notesJSON.coverage.length - 1; j >= 0; j--) {
-						var coverer = notesJSON.coverage[j];
-						pplCovering = pplCovering + coverer.name;
-						if( coverer.id == user.id ) {
-							coveringEventIds.push(event.id);
-						}
-					}
-				}
-
-				if( pplCovering !== undefined && pplCovering.length > 0 ) {
-					event.coverage = pplCovering;
-				}
-			}
-		}
+		var coveringEventIds = getCoveringEventsFromEvents(responseJSON, user)
 
 		callback(error, response, body, coveringEventIds, responseJSON);
 	});
+}
+
+function getCoveringEventsFromEvents(responseJSON, user) {
+
+    var coveringEventIds = [];
+    for (var i = 0; i < responseJSON.events.length; i++) {
+
+        var event = responseJSON.events[i];
+        if (event.notes !== undefined) {
+            var notesJSON = JSON.parse(event.notes.replace(/\'/g, '"'));
+            event.role = notesJSON.role;
+
+            var pplCovering = '';
+            if( notesJSON.coverage !== undefined ) {
+                for (var j = notesJSON.coverage.length - 1; j >= 0; j--) {
+                    var coverer = notesJSON.coverage[j];
+                    pplCovering = pplCovering + coverer.name;
+                    if( coverer.email === user.email ) {
+                        coveringEventIds.push(event.id);
+                    }
+                }
+            }
+
+            if( pplCovering !== undefined && pplCovering.length > 0 ) {
+                event.coverage = pplCovering;
+            }
+        }
+    }
+    return coveringEventIds;
+
 }
 
 function getEvent(eventId, callback) {
@@ -165,7 +172,7 @@ function generateCreateEventMessage(startDateTimeString, endDateTimeString,
     create_event_msg.notes = JSON.stringify({
     	role: coverageType,
     	requestor: {
-    		id: mrs_user.id,
+    		email: mrs_user.email,
     		username: mrs_user.username
     	}
     });
@@ -230,7 +237,7 @@ function updateEvent(eventId, eventBody, callback) {
 	returns the notes JSON stringified
 */
 function addCoverageToNotes(coveredBy, notes) {	
-	if( coveredBy.id === undefined || coveredBy.name == undefined ) {
+	if( coveredBy.email === undefined || coveredBy.name === undefined ) {
 		return notes;
 	}
 
@@ -243,14 +250,13 @@ function addCoverageToNotes(coveredBy, notes) {
 			notesJSON.coverage = [coveredBy];
 		} else {
 			for (var i = notesJSON.coverage.length - 1; i >= 0; i--) {
-				if( notesJSON.coverage[i].id == coveredBy.id ) {
+				if( notesJSON.coverage[i].email === coveredBy.email ) {
 					return notes;
 				}
 			}
 			notesJSON.coverage.push(coveredBy);
 		}
 	}
-
 	return JSON.stringify(notesJSON);
 }
 
@@ -271,7 +277,7 @@ function removeCoverageFromNotes(coveredBy, notes) {
 			var newArr = [];
 			for (var i = 0; i < notesJSON.coverage.length; i++) {
 				var substitute = notesJSON.coverage[i];
-				if( substitute.id != coveredBy.id ) {
+				if( substitute.email != coveredBy.email ) {
 					newArr.push(substitute);
 				}
 			}

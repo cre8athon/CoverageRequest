@@ -1,8 +1,10 @@
 
 const FS = require('fs');
-var userJson;
+var USERFILENAME;
 
-const USERFILENAME = "/tmp/mrscoverageUsers.json";
+function setUserFileName(fn) {
+    USERFILENAME = fn;
+}
 
 function ensureFile() {
 	if( !FS.existsSync(USERFILENAME)) {
@@ -13,7 +15,7 @@ function ensureFile() {
 function loadFileAsJson() {
 	ensureFile(USERFILENAME);
 	var usersData = FS.readFileSync(USERFILENAME, 'utf-8');
-	if( usersData.length == 0 ) {
+	if( usersData.length === 0 ) {
 		usersJSON = {users: []}
 	} else {
 		usersJson = JSON.parse(usersData)
@@ -33,8 +35,8 @@ function saveJson(userJson) {
 function addOrSaveUser(user) {
 	var userJson = loadFileAsJson();
 
-	var existing = findUser(user.agency, user.id, userJson);
-	if( existing.userIdx == -1 ) {
+	var existing = findUser(user.email, userJson);
+	if( existing.userIdx === -1 ) {
 		userJson.users.push(user);
 	} else {
 		userJson.users[existing.userIdx] = user;
@@ -42,14 +44,14 @@ function addOrSaveUser(user) {
 	saveJson(userJson);
 }
 
-function findUser(agency, userId, userJson) {
+function findUser(email, userJson) {
 
 	var retVal = {
 		userIdx: -1
 	};
 
 	for( var i = 0; i < userJson.users.length; i++ ) {
-		if( userJson.users[i].agency == agency && userJson.users[i].id == userId ) {
+		if( userJson.users[i].email === email ) {
 			retVal.userIdx = i;
 			retVal.user = userJson.users[i];
 		}
@@ -62,9 +64,8 @@ function getUsersForAgency(agency) {
 	var users = [];
 
 	var userJson = loadFileAsJson();
-	var userIdx = -1;
 	for( var i = 0; i < userJson.users.length; i++ ) {
-		if( userJson.users[i].agency == agency ) {
+		if( userJson.users[i].agency === agency ) {
 			users.push(userJson.users[i]);
 		}
 	}
@@ -79,9 +80,9 @@ function getUsersForAgency(agency) {
  * @param  {Function} callback(err, user)
  * @return {[type]}            [description]
  */
-function getUserById(agency, userId) {
+function getUserById(userId) {
 	var userJson = loadFileAsJson();
-	var userInfo = findUser(agency, userId, userJson);
+	var userInfo = findUser(userId, userJson);
 
 	return userInfo.user;
 }
@@ -91,9 +92,9 @@ function getUserById(agency, userId) {
  * @param  { String } agency agency Name
  * @param  {String}   userId   [description]
  */
-function deleteUser(agency, userId) {
+function deleteUser(userId) {
 	var userJson = loadFileAsJson();
-	var userInfo = findUser(agency, userId, userJson);
+	var userInfo = findUser(userId, userJson);
 
 	if( userInfo.userIdx >= 0 ) {
 		userJson.users = removeUserFromJson(userJson.users, userInfo.user);
@@ -116,15 +117,16 @@ function removeUserFromJson(users, userToRemove) {
 
 
 function areUsersEqual(usera, userb) {
-	return usera.agency == userb.agency && usera.id == userb.id;
+	return usera.agency === userb.agency && usera.email === userb.email;
 }
 
 
 // ============================================================================================================================
 
-module.exports = {
+module.exports =  {
+    setUserFileName: setUserFileName,
 	addOrSaveUser: addOrSaveUser,
 	getUserById: getUserById,
 	deleteUser: deleteUser,
 	getUsersForAgency: getUsersForAgency
-}
+};
