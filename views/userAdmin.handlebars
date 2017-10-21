@@ -1,44 +1,98 @@
-<h1>Martinsville Rescue Squad</h1>
-<h3>Please provide your userid and password to use the coverage system</h3>
+<h3>User Administration</h3>
 
 <!--
 {
-    username: 'georgen',
-    displayname: 'George Nowakowski',
     email: 'gnowakowski@gmail.com',
+    displayname: 'George Nowakowski',
     isactive: true,
     role: 'Crew Chief',
     isadmin: true,
-    password: 'ccaassee',
-    id: 1
+    password: 'ccaassee'
 };
 -->
 
-<form action="/login" method="post" class="pure-form pure-form-aligned" style="padding-top:50px;">
-	<fieldset>
-		<div class="pure-control-group">
-			<label for="username">User Id</label>
-			<input name="username" id="username" type="text" value="georgen" placeholder="Your username" />
-			<label for="password">Password</label>	
-			<input name="password" id="password" type="password" value="ccaassee" placeholder="Your password"/>
-			<button type="submit">Log in</button>
-		</div>
-	</fieldset>
+<div class="divTable paleBlueRows">
+    <div class="divTableHeading">
+        <div class="divTableRow">
+            <div class="divTableHead">User</div>
+            <div class="divTableHead">User Name</div>
+            <div class="divTableHead">Role</div>
+            <div class="divTableHead">isAdmin</div>
+            <div class="divTableHead">isActive</div>
+            <div class="divTableHead">Action</div>
+        </div>
+    </div>
+
+    {{#each users}}
+        <div class="divTableBody">
+            <div class="divTableRow">
+                <div class="divTableCell">{{this.email}}</div>
+                <div class="divTableCell">{{this.displayname}}</div>
+                <div class="divTableCell">{{this.role}}</div>
+                <div class="divTableCell">
+                    <input type="checkbox"
+                        {{#if this.isadmin }}
+                            checked="true"
+                        {{/if}}
+                    />
+                </div>
+                <div class="divTableCell">
+                <input type="checkbox"
+                    {{#if this.isactive }}
+                       checked="true"
+                    {{/if}}
+                />
+                </div>
+                <div class="divTableCell"><button style="background-color:red" id='btn_{{this.username}}'>Delete</button><button style="background-color:red" id='btn_{{this.username}}'>Modify</button></div>
+            </div>
+        </div>
+    {{/each}}
+</div>
+
+<form action="/addNewUser" method="post" class="pure-form pure-form-aligned">
+    <input type="hidden" id="agency" name="agency" value="{{adminUser.agency}}" />
+    <div>
+        <fieldset>
+            <legend>New User</legend>
+
+            <div class="pure-control-group">
+                <label for="username">User Email</label>
+                <input name='username' style="width:300px;" id='username' />
+            </div>
+            <div class="pure-control-group">
+                <label for="userdisplayname">Display Name</label>
+                <input name='userdisplayname' style="width:300px;" id='userdisplayname' />
+            </div>
+            <div class="pure-control-group">
+                <label for="userrole">Role</label>
+                <select id='userrole' name='userrole'>
+                    <option value="Assistant">Assistant</option>
+                    <option value="Driver">Driver</option>
+                    <option value="EMT">EMT</option>
+                    <option value="Crew Chief">Crew Chief</option>
+                    <option value="Any">Any</option>
+                </select>
+            </div>
+            <div class="pure-control-group">
+                <label for="userisadmin">Is Administrator</label>
+                <input type="checkbox"  name='userisadmin' id='userisadmin' />
+            </div>
+            <div class="pure-control-group">
+                <label for="userisactive">Is Active</label>
+                <input type="checkbox"  name='userisactive' id='userisactive' checked="checked"/>
+            </div>
+
+            <div class="pure-control-group">
+                <label for="userinitialpassword">Password</label>
+                <input name='userinitialpassword' id='userinitialpasword'/>
+            </div>
+
+            <div class="pure-control-group">
+                <button type="submit" class="pure-button pure-button-primary">Create User</button>
+            </div>
+        </fieldset>
+    </div>
 </form>
-
-
-<form action="/login" method="post" class="pure-form pure-form-aligned">
-	<fieldset>
-		<div class="pure-control-group">
-			<label for="username">User Id</label>
-			<input name="username" id="username" type="text" value="marksz" placeholder="Your username" />
-			<label for="password">Password</label>	
-			<input name="password" id="password" type="password" value="goodPwd" placeholder="Your password"/>
-			<button type="submit">Log in</button>
-		</div>
-	</fieldset>
-</form>
-
 
 
 <div style="display:block;padding-top:40px;">If you are having problems loging in, please send an email to: gmn314@yahoo.com</div>

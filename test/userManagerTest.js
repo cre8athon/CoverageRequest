@@ -8,6 +8,7 @@
  */
 
 
+const USERFILENAME = "/tmp/test_mrscoverageUsers.json";
 const userUtil = require('../fileUserManager.js')
 
 const chai = require('chai');
@@ -16,79 +17,83 @@ const assert = chai.assert;
 const expect = chai.expect;
 chai.use(chaiJsonEqual);
 const FS = require('fs');
-const USERFILENAME = "/tmp/mrscoverageUsers.json";
 
 
 
 describe('Test User CRUD', function() {
 
+	before(function() {
+		userUtil.setUserFileName(USERFILENAME);
+
+	});
+
 	var mrs_43user1 = {
 		agency: 43,
-		username:"georgen",
+		email:"gmn314@yahoo.com",
 		displayname:"George Nowakowski",
 		role:"Crew Chief",
 		isactive: true,
 		isadmin: true,
 		password:"ccaassee",
-		id:1
+        usermustresetpw: false
 	};
 
 	var mrs_43user2 = {
 		agency: 43,
-		username:"marksz",
+		email:"marksz@yahoo.com",
 		displayname:"Mark Swartz",
 		role:"Crew Chief",
 		isactive: true,
 		isadmin: false,
 		password:"11223344",
-		id:2
+        usermustresetpw: false
 	};
 
 	var mrs_43user3 = {
 		agency: 43,
-		username:"hillaryj",
+		email:"hillaryj@yahoo.com",
 		displayname:"Hillary Jordan",
 		role:"Assistant",
 		isactive: true,
 		isadmin: false,
 		password:"zzee",
-		id:3
+        usermustresetpw: false
 	};
 
 	var mrs_51user1 = {
 		agency: 51,
-		username:"samules",
+		email:"samules@yahoo.com",
 		displayname:"Sam Samuleson",
 		role:"EMT",
 		isactive: true,
 		isadmin: true,
 		password:"csssassee",
-		id:4
+        usermustresetpw: false
 	};
 
 	var mrs_51user2 = {
 		agency: 51,
-		username:"tobyl",
+		email:"tobyl@yahoo.com",
 		displayname:"Toby Lyons",
 		role:"EMT",
 		isactive: false,
 		isadmin: false,
 		password:"11223344",
-		id:5
+        usermustresetpw: false
 	};
 
 	var mrs_51user3 = {
 		agency: 51,
-		username:"trentd",
+		email:"trentd@yahoo.com",
 		displayname:"Trent Darby",
 		role:"EMT",
 		isactive: true,
 		isadmin: false,
 		password:"zzttee",
-		id:6
+        usermustresetpw: false
 	};
 
-	after(function() {
+	afterEach(function() {
 		FS.unlinkSync(USERFILENAME);
 	});
 
@@ -96,19 +101,19 @@ describe('Test User CRUD', function() {
 		userUtil.addOrSaveUser(mrs_43user1);
 
 		expect(mrs_43user1).to.jsonEqual(
-			userUtil.getUserById(mrs_43user1.agency, mrs_43user1.id)
+			userUtil.getUserById(mrs_43user1.email)
 		);
 	});
 
 	it('TestDeleteOne', function() {
 		userUtil.addOrSaveUser(mrs_43user1);
 		expect(mrs_43user1).to.jsonEqual(
-			userUtil.getUserById(mrs_43user1.agency, mrs_43user1.id)
+			userUtil.getUserById(mrs_43user1.email)
 		);
-		userUtil.deleteUser(mrs_43user1.agency, mrs_43user1.id);
+		userUtil.deleteUser(mrs_43user1.email);
 
 		assert.notExists(
-			userUtil.getUserById(mrs_43user1.agency, mrs_43user1.id)
+			userUtil.getUserById(mrs_43user1.email)
 		);
 	});
 
@@ -119,15 +124,15 @@ describe('Test User CRUD', function() {
 
 		assert.equal(3, userUtil.getUsersForAgency(43).length);
 
-		userUtil.deleteUser(mrs_43user1.agency, mrs_43user1.id);
+		userUtil.deleteUser(mrs_43user1.email);
 
 		assert.equal(2, userUtil.getUsersForAgency(43).length);
 
-		userUtil.deleteUser(mrs_43user3.agency, mrs_43user3.id);
+		userUtil.deleteUser(mrs_43user3.email);
 
 		assert.equal(1, userUtil.getUsersForAgency(43).length);
 
-		userUtil.deleteUser(mrs_43user2.agency, mrs_43user2.id);
+		userUtil.deleteUser(mrs_43user2.email);
 
 		assert.equal(0, userUtil.getUsersForAgency(43).length);
 
@@ -145,15 +150,15 @@ describe('Test User CRUD', function() {
 
 		assert.equal(3, userUtil.getUsersForAgency(43).length);
 
-		userUtil.deleteUser(mrs_43user1.agency, mrs_43user1.id);
+		userUtil.deleteUser(mrs_43user1.email);
 
 		assert.equal(2, userUtil.getUsersForAgency(43).length);
 
-		userUtil.deleteUser(mrs_43user3.agency, mrs_43user3.id);
+		userUtil.deleteUser(mrs_43user3.email);
 
 		assert.equal(1, userUtil.getUsersForAgency(43).length);
 
-		userUtil.deleteUser(mrs_43user2.agency, mrs_43user2.id);
+		userUtil.deleteUser(mrs_43user2.email);
 
 		assert.equal(0, userUtil.getUsersForAgency(43).length);
 

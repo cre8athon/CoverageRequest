@@ -45,7 +45,7 @@ $( document ).ready(function() {
 
 	var eventsJSON = $('#events').val();
 	var currentUserName = $('#currentUserName').val();
-	var currentUserId = $('#currentUserId').val();
+	var currentUserEmail = $('#currentUserEmail').val();
 
 	var eventsMsg = JSON.parse(unescapeHtml(eventsJSON));
 	for (var i = eventsMsg.length - 1; i >= 0; i--) {
@@ -55,17 +55,18 @@ $( document ).ready(function() {
 		var requestor = event.who;
 		var buttonId = '#btn_' + id;
 		var coveringEventIds = splitValues($('#coveringEventIds').val());
-		// console.log(JSON.stringify(event, null, 4));
-		// console.log('eventId: ' + event.id + ' covered by: ' + event.coverage);
+		var coverageLabel =  $('#status_' + id);
 		if( event.coverage === undefined ) {
-			$('#status_' + id).text("Not covered");
-			$('#status_' + id).addClass('label-not-covered');
+            coverageLabel.text("Not covered");
+            coverageLabel.addClass('label-not-covered');
 		} else {
-			$('#status_' + id).text("Covered");			
-			$('#status_' + id).addClass('label-covered');
+            coverageLabel.text("Covered");
+            coverageLabel.addClass('label-covered');
 		}
 
-		if( requestor == currentUserName ) {
+		var requestDetails = JSON.parse(event.notes);
+
+		if( requestDetails.requestor.email === currentUserEmail ) {
 			$(buttonId).text('Delete request');
 			$(buttonId).click(function() {
 				$('#delform_eventId').val(this.id.substring(4))
@@ -77,7 +78,7 @@ $( document ).ready(function() {
 
 			$(buttonId).click(function() {
 				$('#removecover_eventId').val(this.id.substring(4));
-				$('#removecover_userId').val(currentUserId);
+				$('#removecover_userEmail').val(currentUserEmail);
 				$('#removecover_userName').val(currentUserName);
 
 				$('form#removeCoverage').submit();
@@ -87,7 +88,7 @@ $( document ).ready(function() {
 			$(buttonId).text('I will Cover');
 			$(buttonId).click(function() {
 				$('#offercover_eventId').val(this.id.substring(4));
-				$('#offercover_userId').val(currentUserId);
+				$('#offercover_userEmail').val(currentUserEmail);
 				$('#offercover_userName').val(currentUserName);
 
 				$('form#offerCoverage').submit();
@@ -120,16 +121,18 @@ function toggleCalendar() {
 
 </script>
 
+
 <div class="page-header">
 <h3>Martinsville Rescue Squad Coverage</h3>
 </div>
-Welcome {{user.displayname}}.
+Welcome {{user.displayname}}.  {{#if user.isadmin}}<a href="userAdministration">Admin</a>{{/if}}
 Current coverage requests: 
 
+<input id="username" type="hidden" value="{{user.username}}" />
 <input id="allEvents" type="hidden" value="{{origBody}}" />
 <input id='currentUserName' type="hidden" value="{{user.displayname}}" />
-<input id='currentUserId' type='hidden' value="{{user.id}}" />
-<input id='coveringEventIds' type='hidden' value="{{coveringEventIds}}" />
+<input id='currentUserEmail' type='hidden' value="{{user.email}}" />
+<input id='coveringEventIds' value="{{coveringEventIds}}" />
 <input id='events' type="hidden" value='{{eventText}}' />
 
 <div id="no_calendar">
@@ -175,16 +178,26 @@ Current coverage requests:
 
 <form action="/offerCoverage" id="offerCoverage" method="post">
 	<input type="hidden" id="offercover_eventId" name='eventId' />
-	<input type="hidden" id="offercover_userId" name="userId" />
+	<input type="hidden" id="offercover_userEmail" name="userEmail" />
 	<input type="hidden" id="offercover_userName" name='userName' />
 </form>
 
 <form action="/removeCoverage" id="removeCoverage" method="post">
 	<input type="hidden" id="removecover_eventId" name='eventId' />
-	<input type="hidden" id="removecover_userId" name="userId" />
+	<input type="hidden" id="removecover_userEmail" name="userEmail" />
 	<input type="hidden" id="removecover_userName" name='userName' />
 </form>
 
+
+{{#if expressFlash}}
+    <p><strong>FLASH!</strong> {{ expressFlash }}</p>
+{{/if}}
+
+{{#if sessionFlash.message}}
+    <div class="{{ sessionFlash.type }}">
+        <strong>FLASH!</strong> {{ sessionFlash.message }}
+    </div>
+{{/if}}
 
 
 

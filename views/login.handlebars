@@ -1,11 +1,15 @@
+
+
 <h1>Martinsville Rescue Squad</h1>
 <h3>Please provide your userid and password to use the coverage system</h3>
+
+
 
 <form action="/login" method="post" class="pure-form pure-form-aligned" style="padding-top:50px;">
 	<fieldset>
 		<div class="pure-control-group">
 			<label for="username">User Id</label>
-			<input name="username" id="username" type="text" value="georgen" placeholder="Your username" />
+			<input name="username" id="username" type="text" value="gmn314@yahoo.com" placeholder="Your username" />
 			<label for="password">Password</label>	
 			<input name="password" id="password" type="password" value="ccaassee" placeholder="Your password"/>
 			<button type="submit">Log in</button>
@@ -18,14 +22,17 @@
 	<fieldset>
 		<div class="pure-control-group">
 			<label for="username">User Id</label>
-			<input name="username" id="username" type="text" value="marksz" placeholder="Your username" />
+			<input name="username" id="username" type="text" value="marksz@yahoo.com" placeholder="Your username" />
 			<label for="password">Password</label>	
-			<input name="password" id="password" type="password" value="goodPwd" placeholder="Your password"/>
+			<input name="password" id="password" type="password" value="11223344" placeholder="Your password"/>
 			<button type="submit">Log in</button>
 		</div>
 	</fieldset>
 </form>
 
+<div><a href="/forgotPassword">Forgot Password</a></div>
 
-
+{{#if message}}
+<div class="error">{{message}}</div>
+{{/if}}
 <div style="display:block;padding-top:40px;">If you are having problems loging in, please send an email to: gmn314@yahoo.com</div>

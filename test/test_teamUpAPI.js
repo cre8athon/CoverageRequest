@@ -17,7 +17,7 @@ chai.use(chaiJsonEqual);
 
 describe('Test create Event', function() {
 
-	var mrs_user = {"username":"georgen","displayname":"George Nowakowski","role":"Crew Chief","password":"ccaassee","id":1};
+	var mrs_user = {"username":"georgen","displayname":"George Nowakowski","role":"Crew Chief","password":"ccaassee", "email": "gmn314@yahoo.com"};
 
 	it('first one', function() {
 		var startDateTimeString = '';
@@ -34,7 +34,7 @@ describe('Test create Event', function() {
 	        "rrule": "",
 	        "title": "Coverage Request",
 	        "who": mrs_user.displayname,
-	        "notes": "{\"role\":\"EMT\",\"requestor\":{\"id\":1,\"username\":\"georgen\"}}",
+	        "notes": "{\"role\":\"EMT\",\"requestor\":{\"email\":\"gmn314@yahoo.com\",\"username\":\"georgen\"}}",
 	        "location": event_location
 	    };
 
@@ -58,22 +58,24 @@ describe('addCoverageTests', function() {
 			{
 				coverage:
 				[
-					{id: 1234, name: "Alice"}
+					{email: 'alice@yahoo.com', name: "Alice"}
 				] 
 			});
 
-		var modifiedMsg = calendarAPI._addCoverageToNotes({id: 1234, name: "Alice"}, input_notes);
-
+		var modifiedMsg = calendarAPI._addCoverageToNotes({email: 'alice@yahoo.com', name: "Alice"}, input_notes);
 		assert.equal(expected_notes, modifiedMsg);
-	});
+
+//TODO:		calendarAPI.getCoveringEventsFromEvents(responseJSON);
+
+        });
 
 	it('addCoverage when role exists in notes field', function() {
 		var input_notes = JSON.stringify({
 			role: 'EMT'
 		});
 
-		var expected_notes = JSON.stringify({role:"EMT",coverage:[{id: 1234, name: "Alice"}]});
-		var modifiedMsg = calendarAPI._addCoverageToNotes({id: 1234, name: "Alice"}, input_notes);
+		var expected_notes = JSON.stringify({role:"EMT",coverage:[{email: 'alice@yahoo.com', name: "Alice"}]});
+		var modifiedMsg = calendarAPI._addCoverageToNotes({email: 'alice@yahoo.com', name: "Alice"}, input_notes);
 
 		assert.equal(expected_notes, modifiedMsg);
 	});
@@ -81,16 +83,17 @@ describe('addCoverageTests', function() {
 	it('Add coverage when two already exist', function() {
 		var input_notes = JSON.stringify({
 			role: 'EMT',
-			requestor: {id: 1122, name: "Inge Monticello"},
+			requestor: {email: 'inge@yahoo.com', name: "Inge Monticello"},
 			coverage: [
-				{id: 789, name: "George"},
-				{id: 997, name: "Scott"}
+				{email: 'gmn314@yahoo.com', name: "George"},
+				{email: 'scott@yahoo.com', name: "Scott"}
 			]
 		});
 
-		var expected_notes = JSON.stringify({role:"EMT",requestor: {id: 1122, name: "Inge Monticello"}, coverage:[{id: 789, name: "George"},{id:997, name: "Scott"},
-			{id:1234, name: "Alice"}]});
-		var modifiedMsg = calendarAPI._addCoverageToNotes({id: 1234, name: "Alice"}, input_notes);
+		var expected_notes = JSON.stringify({role:"EMT",requestor: {email: 'inge@yahoo.com', name: "Inge Monticello"}, 
+			coverage:[{email: 'gmn314@yahoo.com', name: "George"},{email: 'scott@yahoo.com', name: "Scott"},
+			{email: 'alice@yahoo.com', name: "Alice"}]});
+		var modifiedMsg = calendarAPI._addCoverageToNotes({email: 'alice@yahoo.com', name: "Alice"}, input_notes);
 
 		assert.equal(expected_notes, modifiedMsg);
 	});
@@ -99,14 +102,14 @@ describe('addCoverageTests', function() {
 		var input_notes = JSON.stringify({
 			role: 'EMT',
 			coverage: [
-				{id: 789, name: "George"},
-				{id: 997, name: "Scott"}
+				{email: 'gmn314@yahoo.com', name: "George"},
+				{email: 'scott@yahoo.com', name: "Scott"}
 			]
 		});
 
-		var expected_notes = JSON.stringify({role:"EMT",coverage:[{id: 789, name: "George"},{id:997, name: "Scott"},
-			{id:1234, name: "Alice"}]});
-		var modifiedMsg = calendarAPI._addCoverageToNotes({id: 789, name: "George"}, input_notes);
+		var expected_notes = JSON.stringify({role:"EMT",coverage:[{email: 'gmn314@yahoo.com', name: "George"},{email: 'scott@yahoo.com', name: "Scott"},
+			{email: 'alice@yahoo.com', name: "Alice"}]});
+		var modifiedMsg = calendarAPI._addCoverageToNotes({email: 'gmn314@yahoo.com', name: "George"}, input_notes);
 
 		assert.equal(input_notes, modifiedMsg);
 	});
@@ -115,8 +118,8 @@ describe('addCoverageTests', function() {
 		var input_notes = JSON.stringify({
 			role: 'EMT',
 			coverage: [
-				{id: 789, name: "George"},
-				{id: 997, name: "Scott"}
+				{email: 'gmn314@yahoo.com', name: "George"},
+				{email: 'scott@yahoo.com', name: "Scott"}
 			]
 		});
 
@@ -132,19 +135,19 @@ describe('removeCoverage tests', function() {
 		var input_notes = JSON.stringify({
 			role: 'EMT',
 			coverage: [
-				{id: 789, name: "George"},
-				{id: 997, name: "Scott"}
+				{email: 'gmn314@yahoo.com', name: "George"},
+				{email: 'scott@yahoo.com', name: "Scott"}
 			]
 		});
 
 		var expected_notes = JSON.stringify({
 			role: 'EMT',
 			coverage: [
-				{id: 789, name: "George"}
+				{email: 'gmn314@yahoo.com', name: "George"}
 			]
 		});
 
-		var modifiedNotes = calendarAPI._removeCoverageFromNotes({id: 997, name: "Scott"}, input_notes);
+		var modifiedNotes = calendarAPI._removeCoverageFromNotes({email: 'scott@yahoo.com', name: "Scott"}, input_notes);
 
 		assert.equal(expected_notes, modifiedNotes);
 	});
@@ -153,7 +156,7 @@ describe('removeCoverage tests', function() {
 		var input_notes = JSON.stringify({
 			role: 'EMT',
 			coverage: [
-				{id: 789, name: "George"}
+				{email: 'gmn314@yahoo.com', name: "George"}
 			]
 		});
 
@@ -161,7 +164,7 @@ describe('removeCoverage tests', function() {
 			role: 'EMT'
 		});
 
-		var modifiedNotes = calendarAPI._removeCoverageFromNotes({id: 789, name: "George"}, input_notes);
+		var modifiedNotes = calendarAPI._removeCoverageFromNotes({email: 'gmn314@yahoo.com', name: "George"}, input_notes);
 
 		assert.equal(expected_notes, modifiedNotes);
 	});
@@ -180,12 +183,12 @@ describe('removeCoverage tests', function() {
 		var input_notes = JSON.stringify({
 			role: 'EMT',
 			coverage: [
-				{id: 789, name: "George"},
-				{id: 997, name: "Scott"}
+				{email: 'gmn314@yahoo.com', name: "George"},
+				{email: 'scott@yahoo.com', name: "Scott"}
 			]
 		});
 
-		var modifiedNotes = calendarAPI._removeCoverageFromNotes({id: 111, name:'Scott'}, input_notes);
+		var modifiedNotes = calendarAPI._removeCoverageFromNotes({email: 'albert@yahoo.com', name:'Al'}, input_notes);
 
 		assert.equal(input_notes, modifiedNotes);
 	});
