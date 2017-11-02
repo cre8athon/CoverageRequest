@@ -34,11 +34,11 @@ function authenticate(req, email, password) {
 }
 
 function ensure_authenticated(req, res, next) {
-    if( is_authenticated(req) ) {
+    if( is_authenticated(req, res, next) ) {
         next();
     } else {
         req.session.returnTo = req.path;
-        res.redirect('/login', {message: 'Login required'});
+        res.redirect('/login');
     }
 }
 
@@ -53,32 +53,47 @@ function is_authenticated(req, res, next) {
     if( token === undefined ) {
         console.log('>> authenticator.is_authenticated no token in session');
         req.session.returnTo = req.path;
-        res.redirect('/login');
+        return false;
     } else {
-
         //TODO: Check last accessed - expire?
-        if (token in user_cache) {
-            console.log('>> authenticator.is_authenticated token not found in cache');
-            if (next !== undefined) {
-                next();
-            }
-            return true;
-        } else {
-            console.log('Redirecting...');
-            res.redirect('/login');
-        }
+        return (token in user_cache);
     }
 }
 
+
+// function is_authenticated(req, res, next) {
+//
+//     var token = req.session.AUTHTOKEN;
+//     if( token === undefined ) {
+//         console.log('>> authenticator.is_authenticated no token in session');
+//         req.session.returnTo = req.path;
+//         res.redirect('/login');
+//     } else {
+//
+//         //TODO: Check last accessed - expire?
+//         if (token in user_cache) {
+//             next();
+//         } else {
+//             console.log('Redirecting...to login');
+//             res.redirect('/login');
+//         }
+//     }
+// }
+
+
 function is_admin(req, res, next) {
     if( !is_authenticated(req, res, next) ) {
-        return false;
+        res.redirect('/login');
+    } else {
+        var user = req.session[USER];
+
+        var actual_user = user_manager.getUserById(user.email);
+        if ('isadmin' in actual_user && actual_user.isadmin === true) {
+            next();
+        } else {
+            res.sendStatus(401);
+        }
     }
-
-    var user = req.session[USER];
-
-    var actual_user = user_manager.getUserById(user.email);
-    return ('isadmin' in actual_user && actual_user.isadmin == true);
 }
 
 /**

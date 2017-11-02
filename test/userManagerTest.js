@@ -8,7 +8,6 @@
  */
 
 
-const USERFILENAME = "/tmp/test_mrscoverageUsers.json";
 const userUtil = require('../fileUserManager.js')
 
 const chai = require('chai');
@@ -18,13 +17,31 @@ const expect = chai.expect;
 chai.use(chaiJsonEqual);
 const FS = require('fs');
 
+const AGENCY_PROFILE_PATH = '/tmp/testProfiles';
+const USER_PROFILE_PATH = AGENCY_PROFILE_PATH;
+const EMAIL_TO_AGENCY_PATH = AGENCY_PROFILE_PATH;
+const EMAIL_TO_AGENCY_INDEX = EMAIL_TO_AGENCY_PATH + '/' + 'testEmailToAgencyIndex.csv';
 
+function createDirIfNotExists(dirname) {
+    if (!FS.existsSync(dirname)) {
+        FS.mkdirSync(dirname);
+    }
+}
+
+function beforeTests() {
+	createDirIfNotExists(AGENCY_PROFILE_PATH);
+	createDirIfNotExists(USER_PROFILE_PATH);
+	createDirIfNotExists(EMAIL_TO_AGENCY_PATH);
+}
+
+beforeTests();
 
 describe('Test User CRUD', function() {
 
 	before(function() {
-		userUtil.setUserFileName(USERFILENAME);
-
+		userUtil.setUserFileDir(AGENCY_PROFILE_PATH);
+		userUtil.setProfileDir(USER_PROFILE_PATH);
+		userUtil.setEmailToAgency(EMAIL_TO_AGENCY_INDEX);
 	});
 
 	var mrs_43user1 = {
@@ -93,93 +110,69 @@ describe('Test User CRUD', function() {
         usermustresetpw: false
 	};
 
+	var filesToRemove = [];
+
 	afterEach(function() {
-		FS.unlinkSync(USERFILENAME);
-	});
-
-	it('addUser', function() {
-		userUtil.addOrSaveUser(mrs_43user1);
-
-		expect(mrs_43user1).to.jsonEqual(
-			userUtil.getUserById(mrs_43user1.email)
-		);
-	});
-
-	it('TestDeleteOne', function() {
-		userUtil.addOrSaveUser(mrs_43user1);
-		expect(mrs_43user1).to.jsonEqual(
-			userUtil.getUserById(mrs_43user1.email)
-		);
-		userUtil.deleteUser(mrs_43user1.email);
-
-		assert.notExists(
-			userUtil.getUserById(mrs_43user1.email)
-		);
-	});
-
-	it('testDeleteAll', function() {
-		userUtil.addOrSaveUser(mrs_43user1);
-		userUtil.addOrSaveUser(mrs_43user2);
-		userUtil.addOrSaveUser(mrs_43user3);
-
-		assert.equal(3, userUtil.getUsersForAgency(43).length);
-
-		userUtil.deleteUser(mrs_43user1.email);
-
-		assert.equal(2, userUtil.getUsersForAgency(43).length);
-
-		userUtil.deleteUser(mrs_43user3.email);
-
-		assert.equal(1, userUtil.getUsersForAgency(43).length);
-
-		userUtil.deleteUser(mrs_43user2.email);
-
-		assert.equal(0, userUtil.getUsersForAgency(43).length);
-
-	});
+	    if( FS.existsSync(EMAIL_TO_AGENCY_INDEX) ) {
+            FS.unlinkSync(EMAIL_TO_AGENCY_INDEX);
+        }
+    });
 
 
-	it('testDeleteAllMultipleAgencies', function() {
-		userUtil.addOrSaveUser(mrs_43user1);
-		userUtil.addOrSaveUser(mrs_43user2);
-		userUtil.addOrSaveUser(mrs_43user3);
-		// Add users from other squad as well
-		userUtil.addOrSaveUser(mrs_51user1);
-		userUtil.addOrSaveUser(mrs_51user2);
-		userUtil.addOrSaveUser(mrs_51user3);
+	function createAgencyFile(agency) {
+        var agencyFileName = AGENCY_PROFILE_PATH + '/' + agency;
+        filesToRemove.push(agencyFileName);
+	    FS.writeFileSync(agencyFileName, '{users:[xx]}', 'utf-8');
 
-		assert.equal(3, userUtil.getUsersForAgency(43).length);
+	    FS.openSync(EMAIL_TO_AGENCY_INDEX, 'a');
+    }
 
-		userUtil.deleteUser(mrs_43user1.email);
+	it('IndexTest - addEmailToAgencyFile', function() {
 
-		assert.equal(2, userUtil.getUsersForAgency(43).length);
+        userUtil._addEmailToAgencyIndex('gmn314@yahoo.com', '43');
 
-		userUtil.deleteUser(mrs_43user3.email);
+        console.log('Contents of file: ');
+        var fileJson = JSON.parse(FS.readFileSync(EMAIL_TO_AGENCY_INDEX, 'utf-8'));
+        assert.equal(1, fileJson.agencies.length);
 
-		assert.equal(1, userUtil.getUsersForAgency(43).length);
+        userUtil._addEmailToAgencyIndex('alice@yahoo.com', '34');
+        fileJson = JSON.parse(FS.readFileSync(EMAIL_TO_AGENCY_INDEX, 'utf-8'));
+        assert.equal(2, fileJson.agencies.length);
 
-		userUtil.deleteUser(mrs_43user2.email);
+    });
 
-		assert.equal(0, userUtil.getUsersForAgency(43).length);
+    it('IndexTest - testLookup', function() {
 
-		// Now, ensure that we still have a full complement for the other agency ;)
-		assert.equal(3, userUtil.getUsersForAgency(51).length);
+        assert.equal(undefined, userUtil._getAgencyFromIndex('gmn314@yahoo.com'));
 
-	});
+        userUtil._addEmailToAgencyIndex('gmn314@yahoo.com', '43');
 
-	it('addMultipleUsers', function() {
-		userUtil.addOrSaveUser(mrs_43user1);
-		userUtil.addOrSaveUser(mrs_43user2);
-		userUtil.addOrSaveUser(mrs_43user3);
-		// Add users from other squad as well
-		userUtil.addOrSaveUser(mrs_51user1);
-		userUtil.addOrSaveUser(mrs_51user2);
-		userUtil.addOrSaveUser(mrs_51user3);
+        assert.equal('43', userUtil._getAgencyFromIndex('gmn314@yahoo.com'));
 
-		var users43 = userUtil.getUsersForAgency(43);
-		assert.equal(3, users43.length);
+        userUtil._addEmailToAgencyIndex('horis@booboo.com', '153');
 
-	}); 
+        assert.equal('153', userUtil._getAgencyFromIndex('horis@booboo.com'));
+    });
+
+    it('IndexTest - testRemoveEmailFrom', function() {
+        // Negative test - remove from empty file
+        userUtil._removeEmailFromAgencyIndex('junk');
+
+        userUtil._addEmailToAgencyIndex('gmn314@yahoo.com', '43');
+        userUtil._addEmailToAgencyIndex('gmn628@yahoo.com', '53');
+
+        assert.equal('43', userUtil._getAgencyFromIndex('gmn314@yahoo.com'));
+        assert.equal('53', userUtil._getAgencyFromIndex('gmn628@yahoo.com'));
+
+        userUtil._removeEmailFromAgencyIndex('junk');
+
+        userUtil._removeEmailFromAgencyIndex('gmn314@yahoo.com');
+        assert.equal(undefined, userUtil._getAgencyFromIndex('gmn314@yahoo.com'));
+        assert.equal('53', userUtil._getAgencyFromIndex('gmn628@yahoo.com'));
+
+        userUtil._removeEmailFromAgencyIndex('gmn628@yahoo.com');
+    });
+
 
 
 

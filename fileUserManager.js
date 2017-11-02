@@ -1,30 +1,89 @@
 
 const FS = require('fs');
-var USERFILENAME;
+const glob = require('glob');
 
-function setUserFileName(fn) {
-    USERFILENAME = fn;
+var USERFILEDIR = '/root/mrscoverage/userinfo';
+var PROFILEDIR = '/root/emscoveragewebsite/public/profiles';
+var EMAIL_TO_AGENCY = '/root/mrscoverage/emailToAgency.csv';
+
+// Used for testing
+function setUserFileDir(fn) {
+    USERFILEDIR = fn;
 }
 
-function ensureFile() {
-	if( !FS.existsSync(USERFILENAME)) {
-		FS.writeFileSync(USERFILENAME, '{"users": []}');
-	}
+// Used for testing
+function setProfileDir(dir) {
+    PROFILEDIR = dir;
 }
 
-function loadFileAsJson() {
-	ensureFile(USERFILENAME);
-	var usersData = FS.readFileSync(USERFILENAME, 'utf-8');
-	if( usersData.length === 0 ) {
-		usersJSON = {users: []}
-	} else {
-		usersJson = JSON.parse(usersData)
-	}
-	return usersJson;
+// Used for testing
+function setEmailToAgency(emailAgencyFN) {
+    EMAIL_TO_AGENCY = emailAgencyFN;
 }
 
-function saveJson(userJson) {
-	FS.writeFileSync(USERFILENAME, JSON.stringify(userJson));	
+function buildAgencyFilename(agency) {
+    return  USERFILEDIR + '/' + agency + '.json';
+}
+
+/**
+ * In the mapping file that contains key=email, value=agency, look up the give useremail
+ * {"agencies": [{"user": "gmn314@yahoo.com", "agency":"43"}, {"user": "scott_rap@aol.com", "agency":"34"}]}
+ * @param username
+ */
+function getAgencyFromIndex(userEmail) {
+    if( FS.existsSync(EMAIL_TO_AGENCY) ) {
+        var agencyIndexJson = JSON.parse(FS.readFileSync(EMAIL_TO_AGENCY, 'utf-8'));
+        if (agencyIndexJson.agencies.length > 0) {
+            return findAgencyForUser(agencyIndexJson, userEmail);
+        }
+    }
+}
+
+function findAgencyForUser(agencyIndexJson, userEmail) {
+    for(var idx =0; idx < agencyIndexJson.agencies.length; idx++ ) {
+        var tup = agencyIndexJson.agencies[idx];
+        if (tup.user === userEmail) {
+            return tup.agency;
+        }
+    }
+}
+
+function addEmailToAgencyIndex(email, agency) {
+    console.log('Appending to file: ' + EMAIL_TO_AGENCY);
+
+    var agencyIndexJSON;
+    if( !FS.existsSync(EMAIL_TO_AGENCY) ) {
+        agencyIndexJSON = {"agencies": []};
+    } else {
+        var agencyIndex = FS.readFileSync(EMAIL_TO_AGENCY, 'utf-8');
+        agencyIndexJSON = JSON.parse(agencyIndex);
+    }
+
+    if( findAgencyForUser(agencyIndexJSON, email) === undefined ) {
+        agencyIndexJSON.agencies.push({"user": email, "agency": agency});
+        FS.writeFileSync(EMAIL_TO_AGENCY, JSON.stringify(agencyIndexJSON));
+    }
+}
+
+function removeEmailFromAgencyIndex(email) {
+    if (FS.existsSync(EMAIL_TO_AGENCY)) {
+        var agencyIndex = FS.readFileSync(EMAIL_TO_AGENCY, 'utf-8');
+        var agencyIndexJSON = JSON.parse(agencyIndex);
+        agencyIndexJSON.agencies.forEach(function (tuple, idx) {
+            if (tuple.user === email) {
+                agencyIndexJSON.agencies.splice(idx, 1);
+                FS.writeFileSync(EMAIL_TO_AGENCY, JSON.stringify(agencyIndexJSON));
+            }
+        });
+    }
+}
+
+function loadAgencyFileAsJSON(agency) {
+    var agencyFN = buildAgencyFilename(agency);
+    if( FS.existsSync(agencyFN)) {
+        var agencyData = FS.readFileSync(agencyFN, 'utf-8');
+        return JSON.parse(agencyData);
+    }
 }
 
 /**
@@ -33,19 +92,24 @@ function saveJson(userJson) {
  * @param {Function} callback(err)
  */
 function addOrSaveUser(user) {
-	var userJson = loadFileAsJson();
+	var agencyJson = _loadAgencyFileAsJSON(user.agency);
 
-	var existing = findUser(user.email, userJson);
+	var existing = _findUser(user.email, agencyJson);
 	if( existing.userIdx === -1 ) {
-		userJson.users.push(user);
+        agencyJson.users.push(user);
+		_addEmailToAgencyIndex(user.email, user.agency);
 	} else {
-		userJson.users[existing.userIdx] = user;
+        allUsersJson.users[existing.userIdx] = user;
 	}
-	saveJson(userJson);
+	saveJson(allUsersJson, user.agency);
+}
+
+function getUsersForAgency(agency) {
+    var agencyJson = _loadAgencyFileAsJSON(agency);
+    return agencyJson.users;
 }
 
 function findUser(email, userJson) {
-
 	var retVal = {
 		userIdx: -1
 	};
@@ -56,21 +120,64 @@ function findUser(email, userJson) {
 			retVal.user = userJson.users[i];
 		}
 	}
-
 	return retVal;
 }
 
-function getUsersForAgency(agency) {
-	var users = [];
 
-	var userJson = loadFileAsJson();
-	for( var i = 0; i < userJson.users.length; i++ ) {
-		if( userJson.users[i].agency === agency ) {
-			users.push(userJson.users[i]);
-		}
-	}
+/**
+ * Look through profiles of confirmed users.  If you find the email address as part of the filename, import that users
+ * info.  Might have to create an agency file as well.
+ *
+ * @param email
+ */
+function importConfirmedUser(email) {
+    var emailFiles = glob.sync(email + '\.profile\.json');
+    if( emailFiles !== undefined && emailFiles.length > 0 ) {
+        emailFiles.forEach(function(emailFile) {
+            var userProfile = FS.readFileSync(emailFile, 'utf-8');
+            if( userProfile !== undefined && userProfile.length > 0 ) {
+                var userProfileJson = JSON.parse(userProfile)
+                var userJson = profileToUser(userProfileJson);
+                addOrSaveUser(userJson);
+                return userJson;
+            }
+        });
+    }
+}
 
-	return users;
+function profileToUser(profile) {
+    /** Profile:
+     * {"firstname":"George",
+     * "lastname":"Nowakowski",
+     * "email":"gmn314@yahoo.com",
+     * "password":"ccaassee",
+     * "phone":"9084192571",
+     * "code":"3C0ZATGK",
+     * "squadname":"Martinsville Rescue Squad"}
+     */
+
+    /** User:
+     * 	var mrs_43user1 = {
+		agency: 43,
+		email:"gmn314@yahoo.com",
+		displayname:"George Nowakowski",
+		role:"Crew Chief",
+		isactive: true,
+		isadmin: true,
+		password:"ccaassee",
+        usermustresetpw: false
+	};
+
+     */
+    return {
+        agency: profile.code,
+        email: profile.email,
+        displayname: profile.firstname + ' ' + profile.lastname,
+        isactive: true,
+        isadmin: true,
+        password: profile.password,
+        usermustresetpw: false
+    };
 }
 
 /**
@@ -80,11 +187,19 @@ function getUsersForAgency(agency) {
  * @param  {Function} callback(err, user)
  * @return {[type]}            [description]
  */
-function getUserById(userId) {
-	var userJson = loadFileAsJson();
-	var userInfo = findUser(userId, userJson);
+function getUserById(email, agency) {
+    var userJson;
+    if( agency === undefined ) {
+        agency = getAgencyFromIndex(email);
+    }
 
-	return userInfo.user;
+    if( agency === undefined ) {
+        userJson = importConfirmedUser(email);
+    } else {
+        var agencyFileJson = loadAgencyFileAsJSON(agency);
+        userJson = findUser(email, agencyFileJson.users);
+    }
+	return userJson;
 }
 
 /**
@@ -92,14 +207,16 @@ function getUserById(userId) {
  * @param  { String } agency agency Name
  * @param  {String}   userId   [description]
  */
-function deleteUser(userId) {
-	var userJson = loadFileAsJson();
-	var userInfo = findUser(userId, userJson);
-
-	if( userInfo.userIdx >= 0 ) {
-		userJson.users = removeUserFromJson(userJson.users, userInfo.user);
-		saveJson(userJson);
-	}	
+function deleteUser(userEmail) {
+    var agency = findAgencyForUser(userEmail);
+    if( agency !== undefined ) {
+        var agencyUsers = loadFileAsJson(agency);
+        var userInfo = findUser(userId, agencyUsers);
+        if( userInfo.userIdx >= 0 ) {
+            userJson.users = removeUserFromJson(userJson.users, userInfo.user);
+            saveJson(userJson);
+        }
+    }
 }
 
 function removeUserFromJson(users, userToRemove) {
@@ -124,9 +241,16 @@ function areUsersEqual(usera, userb) {
 // ============================================================================================================================
 
 module.exports =  {
-    setUserFileName: setUserFileName,
-	addOrSaveUser: addOrSaveUser,
+    setUserFileDir: setUserFileDir,
+    setProfileDir: setProfileDir,
+    setEmailToAgency: setEmailToAgency,
+    addOrSaveUser: addOrSaveUser,
 	getUserById: getUserById,
 	deleteUser: deleteUser,
-	getUsersForAgency: getUsersForAgency
+	getUsersForAgency: getUsersForAgency,
+    _getAgencyFromIndex: getAgencyFromIndex,
+    _findAgencyForUser: findAgencyForUser,
+    _addEmailToAgencyIndex: addEmailToAgencyIndex,
+    _removeEmailFromAgencyIndex: removeEmailFromAgencyIndex,
+    _loadAgencyFileAsJSON: loadAgencyFileAsJSON
 };

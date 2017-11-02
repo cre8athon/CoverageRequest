@@ -1,6 +1,18 @@
+<style>
+    .hide
+    {
+        display:none;
+    },
+    .jsgrid-pager-container {
+        display: block !important;
+    }
+</style>
+
 <script>
 
-$( document ).ready(function() {
+    var DATE_FORMAT = 'DD MM dd, yy';
+
+    $( document ).ready(function() {
 
 	events = [
 				{
@@ -95,10 +107,164 @@ $( document ).ready(function() {
 			});
 		}
 	}
+
+	var roles = [
+        { Name: "Assistant", Id: 0},
+        { Name: "Driver", Id: 1},
+        { Name: "EMT", Id: 2},
+        { Name: "Crew Chief", Id: 3},
+        { Name: "Any", Id: 4}
+    ];
+
+    $("#jsGrid").jsGrid({
+        width: "95%",
+        height: "400px",
+
+        editing: true,
+        sorting: true,
+        autoload: true,
+        paging: true,
+        pageSize: 15,
+        pageButtonCount: 5,
+        pagerContainer: "#externalPager",
+        pagerFormat: "current page: {pageIndex} &nbsp;&nbsp; {first} {prev} {pages} {next} {last} &nbsp;&nbsp; total pages: {pageCount}",
+        pagePrevText: "<",
+        pageNextText: ">",
+        pageFirstText: "<<",
+        pageLastText: ">>",
+        pageNavigatorNextText: "&#8230;",
+        pageNavigatorPrevText: "&#8230;",
+
+        deleteConfirm: function(item) {
+            return "The client \"" + item.Name + "\" will be removed. Are you sure?";
+        },
+        rowClick: function(args) {
+
+        },
+
+//        rowClick: function(args) {
+//            showDetailsDialog("Edit", args.item);
+//        },
+
+        controller: {
+            loadData: function(filter) {
+                return $.ajax({
+                    type: "GET",
+                    url: "/coveragedata",
+                    data: filter
+                });
+            },
+            insertItem: function(item) {
+                return $.ajax({
+                    type: "POST",
+                    url: "/coveragedata",
+                    data: item
+                });
+            },
+            updateItem: function(item) {
+                return $.ajax({
+                    type: "PUT",
+                    url: "/coveragedata",
+                    data: item
+                });
+            },
+            deleteItem: function(item) {
+                return $.ajax({
+                    type: "DELETE",
+                    url: "/coveragedata",
+                    data: item
+                });
+            }
+        },
+
+        fields: [
+            { name: "covered_by", css: "hide"},
+            { title: "Requester",       name: "requester",          type: "text",   editing: false, align: "left", width: 190},
+            { title: "Request Status",  name: "coverage_status",    type: "text",   editing: false, align: "left", width: 75 },
+            { title: "Covered By",      name: "covered_by",         type: "text",   editing: false, align: "left", width: 190 },
+            { title: "Role",            name: "req_role",           type: "select",                 align: "left", width: 50,
+                items: roles, valueField: "Id", textField: "Name" },
+            { title: "Start Date",      name: "start_dt",           type: "text",   editing: false, align: "left", width: 55 },
+            { title: "Start Time",      name: "start_t",            type: "text",   editing: false, align: "left", width: 25 },
+            { title: "End Date",        name: "end_dt",             type: "text",   editing: false, align: "left", width: 55 },
+            { title: "End Time",        name: "end_t",              type: "text",   editing: false, align: "left", width: 25 },
+            { title: "Action",
+                itemTemplate: function(_, item) {
+                    var button_txt = "Offer Coverage";
+                    if( item.covered_by === '{{user.displayname}}' ) {
+                        button_txt = "Remove Coverage";
+                    } else if( item.requester === '{{user.displayname}}') {
+                        button_txt = "Delete Request";
+                    }
+                    return $("<button class='pure-button pure-button-primary'>").text(button_txt)
+                            .on("click", function() {
+                                alert(item.requester);
+                            });
+                }
+            }
+        ]
+    });
+
+    var submitHandler;
+
+    $('#dia_start_date').datepicker({defaultDate: new Date(), dateFormat: DATE_FORMAT});
+    $('#dia_end_date').datepicker({defaultDate: new Date(), dateFormat: DATE_FORMAT});
+
+    var dialog = $("#dialog-form").dialog({
+        autoOpen: false,
+        width: 600,
+        modal: true,
+        closeOnEscape: true,
+        buttons: {
+            Save: function() {
+                $("#coverageForm").submit();
+            },
+            Cancel: function() {
+                $(this).dialog("close");
+            }
+        },
+        close: function() {
+            dialog.find("form")[0].reset();
+        }
+    });
+
+    dialog.find("form").submit(function(e) {
+        e.preventDefault();
+        submitHandler();
+    });
+
+    function showDetailsDialog(dialogType, coverage_request) {
+        submitHandler = function(event) {
+            //if($("#categoryForm").valid()) {
+            saveClient(category, dialogType === "Add");
+            //}
+        };
+
+        $('#dia_start_dt').val(coverage_request.start_dt);
+        $('#dia_start_time').val(coverage_request.start_t);
+        $('#dia_end_dt').val(coverage_request.end_dt);
+        $('#dia_end_time').val(coverage_request.end_t);
+        $('#dia_coverageType').val(coverage_request.coverageType);
+
+        dialog.dialog("option", "title", dialogType + " coverage request").dialog("open");
+    };
+
+    var saveClient = function(category, isNew) {
+        $.extend(category, {
+            code_cat: $("#code_cat").val(),
+            descr_fra: $("#descr_fra").val(),
+            descr_eng: $("#descr_eng").val(),
+            descr_deu: $("#descr_deu").val()
+        });
+        console.dir(category);
+        $("#jsGrid").jsGrid(isNew ? "insertItem" : "updateItem", category);
+
+        dialog.dialog("close");
+    };
 });
 
 function splitValues(val) {
-	if( val === undefined || val.length == 0 ) {
+	if( val === undefined || val.length === 0 ) {
 		return [];
 	} else {
 		return val.split(',');
@@ -121,20 +287,50 @@ function toggleCalendar() {
 
 </script>
 
-
-<div class="page-header">
-<h3>Martinsville Rescue Squad Coverage</h3>
+<div id="dialog-form" title="Coverage Request" class="pure-form pure-form-aligned">
+    <form id="coverageForm">
+        <fieldset>
+            <div class="pure-control-group">
+                <label>Requester</label><label>{{user.displayname}}</label>
+            </div>
+            <div class="pure-control-group">
+                <label for="dia_start_dt">Start Date</label><input id="dia_start_dt" />
+            </div>
+            <div class="pure-control-group">
+                <label>Start Time</label><input id="dia_start_time"/>
+                <button>AM Shift</button><button>PM Shift</button>
+            </div>
+            <div class="pure-control-group">
+                <label>End Date</label><input id="dia_end_dt" />
+            </div>
+            <div class="pure-control-group">
+                <label>End Time</label><input id="dia_end_time"/>
+            </div>
+            <div class="pure-control-group">
+                <label>Coverage Type</label>
+                <select id='dia_coverageType' name='coverageType'>
+                    <option value="Assistant">Assistant</option>
+                    <option value="Driver">Driver</option>
+                    <option value="EMT">EMT</option>
+                    <option value="Crew Chief">Crew Chief</option>
+                    <option value="Any">Any</option>
+                </select>
+            </div>
+        </fieldset>
+    </form>
 </div>
-Welcome {{user.displayname}}.  {{#if user.isadmin}}<a href="userAdministration">Admin</a>{{/if}}
-Current coverage requests: 
+
 
 <input id="username" type="hidden" value="{{user.username}}" />
 <input id="allEvents" type="hidden" value="{{origBody}}" />
 <input id='currentUserName' type="hidden" value="{{user.displayname}}" />
 <input id='currentUserEmail' type='hidden' value="{{user.email}}" />
-<input id='coveringEventIds' value="{{coveringEventIds}}" />
+<input id='coveringEventIds' type="hidden" value="{{coveringEventIds}}" />
 <input id='events' type="hidden" value='{{eventText}}' />
 
+</div>
+
+<!--
 <div id="no_calendar">
 	<button onClick="toggleCalendar();">Show Calendar</button>
 </div>
@@ -142,36 +338,15 @@ Current coverage requests:
 	<button onClick="toggleCalendar();">Hide Calendar</button>
 	<div id='calendar'></div>
 </div>
+-->
+
+<div style="width:100%;text-align: center;margin-top:20px;">
+    <form action="/requestcoverage" method="get">
+        <button class='pure-button pure-button-primary' type="submit">Create Coverage Request</button>
+    </form>
+    <div style="margin: 0 auto;" id="jsGrid"></div>
 </div>
  
-<div class="divTable paleBlueRows">
-	<div class="divTableHeading">
-	<div class="divTableRow">
-	<div class="divTableHead">Requestor</div>
-	<div class="divTableHead">Request Status</div>
-	<div class="divTableHead">Covered By</div>
-	<div class="divTableHead">Role</div>
-	<div class="divTableHead">Start Date</div>
-	<div class="divTableHead">End Date</div>
-	<div class="divTableHead">Action</div>
-	</div>
-	</div>
-
-	{{#each events}}
-	<div class="divTableBody">
-	<div class="divTableRow">
-	<div class="divTableCell">{{this.who}}</div>
-	<div class="divTableCell"><label id='status_{{this.id}}'/></div>
-	<div class="divTableCell">{{this.coverage}}</div>
-	<div class="divTableCell">{{this.role}}</div>
-	<div class="divTableCell">{{this.start_dt}}</div>
-	<div class="divTableCell">{{this.end_dt}}</div>
-	<div class="divTableCell"><button id='btn_{{this.id}}' /></div>
-	</div>
-	</div>
-	{{/each}}
-</div>
-
 <form action="/deleteEvent" id='deleteForm' method="post">
 	<input type="hidden" id="delform_eventId" name='eventId' />
 </form>
@@ -189,22 +364,11 @@ Current coverage requests:
 </form>
 
 
-{{#if expressFlash}}
-    <p><strong>FLASH!</strong> {{ expressFlash }}</p>
-{{/if}}
-
-{{#if sessionFlash.message}}
-    <div class="{{ sessionFlash.type }}">
-        <strong>FLASH!</strong> {{ sessionFlash.message }}
-    </div>
-{{/if}}
-
-
-
-<form action="/requestcoverage" method="get">
-	<button class='pure-button pure-button-primary' type="submit">Create Coverage Request</button>
-</form>
-
+<div style="margin-top:10px;margin-left:20px;">
+    <form action="/requestcoverage" method="get">
+        <button class='pure-button pure-button-primary' type="submit">Create Coverage Request</button>
+    </form>
+</div>
 
 
 <link href='/fullcalendar-3.5.1/fullcalendar.min.css' rel='stylesheet' />
@@ -212,3 +376,10 @@ Current coverage requests:
 <script src='/fullcalendar-3.5.1/lib/moment.min.js'></script>
 <script src='/fullcalendar-3.5.1/lib/jquery.min.js'></script>
 <script src='/fullcalendar-3.5.1/fullcalendar.min.js'></script>
+
+<script src="/jsgrid-1.5.3/jsgrid.js"></script>
+<link rel="stylesheet" type="text/css" href="/jsgrid-1.5.3/jsgrid-theme.css"></link>
+<link rel="stylesheet" type="text/css" href="/jsgrid-1.5.3/jsgrid.css"></link>
+
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/redmond/jquery-ui.css"></link>

@@ -103,6 +103,8 @@ app.use(flash());
 
 // routes ======================================================================
 require('./app/routes.js')(app, passport, coverageCalendar, userManager); // load our routes and pass in our app and fully configured passport
+require('./app/coverage_request_router.js')(app, coverageCalendar);
+require('./app/user_admin_router.js')(app, coverageCalendar);
 
 app.set('port', process.env.PORT || 3000);
 

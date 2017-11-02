@@ -17,11 +17,45 @@
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.css">
 <script src="//cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.js"></script>
 
+<script src="/jsgrid-1.5.3/jsgrid.js"></script>
+<link rel="stylesheet" type="text/css" href="/jsgrid-1.5.3/jsgrid-theme.css"></link>
+<link rel="stylesheet" type="text/css" href="/jsgrid-1.5.3/jsgrid.css"></link>
+
 <!-- https://purecss.io/start/ -->
 <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css" integrity="sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w" crossorigin="anonymous">
 
-<!--
--->
 
-<h1>Martinsville Rescue Squad</h1>
+<style>
+    body {
+        font-family: Lucida Grande;
+        background-image: url('/img/brushed.png');
+    }
+
+    .banner-agency {
+        cursor: pointer;
+        margin-left:10px;
+        color:white;
+        font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
+        font-size: 25px;
+        margin-right:20px;
+    }
+
+    .menu-item {
+        cursor: pointer;
+        color: white;
+        border-right: 1px solid;
+        padding: 20px;
+    }
+</style>
+
+<div style="width:100%;background: red;height:50px;">
+    <label class="banner-agency" onclick="window.location.replace('/home');">Martinsville Rescue Squad</label>
+    <label style="color:white">{{user.displayname}}</label>
+    {{#if user.isadmin}}
+        <label class="menu-item" onclick="window.location.replace('/userAdministration');">Administration</label>
+    {{/if}}
+
+    <label class="menu-item">Log off</label>
+    <label class="menu-item" style="text-align:right">Help</label>
+</div>
 

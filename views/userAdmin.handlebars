@@ -10,8 +10,102 @@
     password: 'ccaassee'
 };
 -->
+<script>
 
-<div class="divTable paleBlueRows">
+    var roles = [
+        { Name: "Assistant", Id: 0},
+        { Name: "Driver", Id: 1},
+        { Name: "EMT", Id: 2},
+        { Name: "Crew Chief", Id: 3},
+        { Name: "Any", Id: 4}
+    ];
+
+
+    $( document ).ready(function() {
+        $("#jsGrid").jsGrid({
+            width: "95%",
+            height: "400px",
+
+            editing: true,
+            sorting: true,
+            autoload: true,
+            paging: true,
+            pageSize: 15,
+            pageButtonCount: 5,
+            pagerContainer: "#externalPager",
+            pagerFormat: "current page: {pageIndex} &nbsp;&nbsp; {first} {prev} {pages} {next} {last} &nbsp;&nbsp; total pages: {pageCount}",
+            pagePrevText: "<",
+            pageNextText: ">",
+            pageFirstText: "<<",
+            pageLastText: ">>",
+            pageNavigatorNextText: "&#8230;",
+            pageNavigatorPrevText: "&#8230;",
+
+            deleteConfirm: function(item) {
+                return "User: \"" + item.Name + "\" will be removed. Are you sure?";
+            },
+//            rowClick: function(args) {
+//
+//            },
+
+//        rowClick: function(args) {
+//            showDetailsDialog("Edit", args.item);
+//        },
+
+            controller: {
+                loadData: function(filter) {
+                    return $.ajax({
+                        type: "GET",
+                        url: "/usersdata",
+                        data: filter
+                    });
+                },
+                insertItem: function(item) {
+                    return $.ajax({
+                        type: "POST",
+                        url: "/usersdata",
+                        data: item
+                    });
+                },
+                updateItem: function(item) {
+                    return $.ajax({
+                        type: "PUT",
+                        url: "/usersdata",
+                        data: item
+                    });
+                },
+                deleteItem: function(item) {
+                    return $.ajax({
+                        type: "DELETE",
+                        url: "/usersdata",
+                        data: item
+                    });
+                }
+            },
+            fields: [
+                { name: "covered_by", css: "hide"},
+                { title: "Email",           name: "user_email",         type: "text",   align: "left", width: 190},
+                { title: "Name",            name: "user_name",          type: "text",   align: "left", width: 75 },
+                { title: "Role",            name: "user_role",           type: "select",                 align: "left", width: 50,
+                    items: roles, valueField: "Id", textField: "Name" },
+                { title: "Is Admin",        name: "is_admin",           type: "checkbox",   width: 55 },
+                { title: "Is Active",       name: "is_active",          type: "text",   align: "left", width: 25 },
+                { title: "Last Logged In",  name: "last_logged_in_dt",  type: "text",   editing: false, align: "left", width: 55 },
+                { title: "Reset Password",  name: "btn_reset",  type: "button",   align: "left", width: 55 },
+                { type: "control" }
+            ]
+        });
+
+    })
+</script>
+
+
+<div style="margin: 0 auto;" id="jsGrid"></div>
+
+
+
+
+<div class="divTable paleBlueRows" style="display:none;">
     <div class="divTableHeading">
         <div class="divTableRow">
             <div class="divTableHead">User</div>
@@ -49,7 +143,7 @@
     {{/each}}
 </div>
 
-<form action="/addNewUser" method="post" class="pure-form pure-form-aligned">
+<form action="/addNewUser" method="post" class="pure-form pure-form-aligned"  style="display:none;">
     <input type="hidden" id="agency" name="agency" value="{{adminUser.agency}}" />
     <div>
         <fieldset>
@@ -94,5 +188,3 @@
     </div>
 </form>
 
-
-<div style="display:block;padding-top:40px;">If you are having problems loging in, please send an email to: gmn314@yahoo.com</div>
